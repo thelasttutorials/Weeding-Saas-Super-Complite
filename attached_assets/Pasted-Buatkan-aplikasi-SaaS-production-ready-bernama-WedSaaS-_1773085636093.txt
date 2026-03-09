@@ -1,0 +1,388 @@
+Buatkan aplikasi SaaS production-ready bernama "WedSaaS" untuk platform undangan pernikahan digital menggunakan:
+
+- Next.js terbaru dengan App Router
+- TypeScript
+- Tailwind CSS
+- Supabase (Auth, Database, Storage)
+
+Tujuan aplikasi:
+User dapat membuat website undangan pernikahan digital yang elegan, membagikan link undangan, mengelola RSVP tamu, menerima ucapan, menampilkan amplop digital, dan melihat statistik undangan dari dashboard.
+
+Arsitektur harus scalable dan multi-tenant sehingga satu user dapat memiliki banyak undangan.
+
+==================================================
+STRUKTUR APLIKASI
+==================================================
+
+Buat 4 area utama aplikasi:
+
+1. Marketing Website
+2. Authentication
+3. User Dashboard
+4. Admin Panel
+
+Gunakan route group Next.js App Router:
+
+/(marketing)
+/(auth)
+/(dashboard)
+/invite/[slug]
+/admin
+
+==================================================
+MARKETING WEBSITE
+==================================================
+
+Buat landing page SaaS modern.
+
+Section:
+- hero section
+- product features
+- how it works
+- template showcase
+- RSVP & analytics showcase
+- pricing
+- testimonials
+- FAQ
+- footer
+
+CTA utama:
+"Coba Gratis"
+
+CTA kedua:
+"Lihat Demo"
+
+Landing page harus terlihat seperti startup modern.
+
+==================================================
+AUTHENTICATION
+==================================================
+
+Gunakan Supabase Auth.
+
+Halaman:
+- Login
+- Register
+- Forgot password
+
+Dashboard harus protected route.
+
+Gunakan session Supabase untuk mengontrol akses.
+
+==================================================
+USER DASHBOARD
+==================================================
+
+Dashboard sidebar menu:
+
+- Overview
+- Invitations
+- Create Invitation
+- RSVP Management
+- Guest Messages
+- Digital Gift Settings
+- Theme Settings
+- Analytics
+- Subscription
+- White Label
+- Account Settings
+
+Overview page menampilkan:
+
+- total invitations
+- total RSVP
+- total guest messages
+- invitation views
+- attendance rate
+
+Gunakan stat cards dan simple charts.
+
+==================================================
+INVITATION MANAGEMENT
+==================================================
+
+User dapat membuat banyak undangan.
+
+Data invitation:
+
+id
+user_id
+title
+slug
+theme
+status
+published_at
+created_at
+
+Fitur:
+- create invitation
+- edit invitation
+- preview invitation
+- duplicate invitation
+- archive invitation
+
+==================================================
+INVITATION BUILDER
+==================================================
+
+Builder harus memiliki section berikut:
+
+Basic Info
+- invitation title
+- slug
+- status
+
+Couple Info
+- bride name
+- groom name
+- bride parents
+- groom parents
+- love story
+
+Event Details
+- akad date
+- akad time
+- akad venue
+- reception date
+- reception time
+- reception venue
+- maps link
+
+Additional Content
+- opening quote
+- closing message
+- wedding hashtag
+- livestream link
+- background music
+
+Gallery
+- upload images ke Supabase Storage
+- reorder images
+
+RSVP Settings
+- enable RSVP
+- max guests
+- deadline
+
+Theme Settings
+- choose theme
+- accent color
+
+Publish Settings
+- preview link
+- publish toggle
+
+==================================================
+PUBLIC INVITATION PAGE
+==================================================
+
+Route:
+ /invite/[slug]
+
+Data diambil dari database Supabase.
+
+Tambahkan query param:
+
+?to=NamaTamu
+
+Jika ada parameter ini tampilkan:
+
+"Kepada Yth. NamaTamu"
+
+Section halaman undangan:
+
+- opening cover
+- couple names
+- wedding date
+- countdown timer
+- love story
+- event details
+- maps
+- gallery
+- RSVP form
+- guest messages
+- digital gift
+- closing section
+
+Desain harus romantis dan mobile-first.
+
+==================================================
+RSVP SYSTEM
+==================================================
+
+Form RSVP:
+
+name
+whatsapp
+guest_count
+status (attending / not attending)
+message
+
+Data disimpan ke Supabase table rsvps.
+
+Dashboard RSVP Management menampilkan:
+
+- total RSVP
+- attending
+- declined
+- pending
+
+==================================================
+GUEST MESSAGE SYSTEM
+==================================================
+
+Form ucapan tamu:
+
+name
+message
+
+Data disimpan ke guest_messages.
+
+Dashboard dapat:
+- melihat ucapan
+- hide message
+- filter message
+
+==================================================
+DIGITAL GIFT SYSTEM
+==================================================
+
+User dapat menambahkan:
+
+bank_name
+account_number
+account_holder
+wallet_name
+wallet_number
+
+Tampilkan di halaman undangan dengan tombol copy.
+
+Tambahkan gift confirmation form.
+
+==================================================
+THEME SYSTEM
+==================================================
+
+Minimal 4 tema:
+
+Classic Elegant
+Minimal Modern
+Romantic Floral
+Luxury Gold
+
+Tema mengubah:
+- hero style
+- typography
+- colors
+- layout details
+
+==================================================
+ANALYTICS
+==================================================
+
+Dashboard analytics menampilkan:
+
+- invitation views
+- RSVP conversion rate
+- message count
+- gift confirmations
+
+Gunakan chart sederhana.
+
+==================================================
+SUBSCRIPTION SYSTEM
+==================================================
+
+Plan:
+
+FREE
+- 1 invitation
+- basic theme
+- watermark
+
+PREMIUM
+- premium themes
+- digital gift
+- no watermark
+- analytics
+
+BUSINESS
+- multiple invitations
+- white label
+- custom domain placeholder
+
+==================================================
+DATABASE TABLES (SUPABASE)
+==================================================
+
+profiles
+invitations
+invitation_couples
+invitation_events
+invitation_gallery
+rsvps
+guest_messages
+gift_accounts
+gift_confirmations
+subscriptions
+white_label_settings
+
+Relasi:
+
+auth.users → profiles
+profiles → invitations
+invitations → rsvps
+invitations → guest_messages
+invitations → gift_accounts
+
+==================================================
+SUPABASE STORAGE
+==================================================
+
+Gunakan Supabase Storage untuk:
+
+- cover images
+- couple photos
+- gallery images
+- white label logo
+
+==================================================
+UI COMPONENTS
+==================================================
+
+Buat reusable components:
+
+Navbar
+Sidebar
+StatCard
+InvitationCard
+DataTable
+SearchBar
+ThemeSelector
+BuilderSection
+RSVPForm
+GuestMessageForm
+GiftCard
+PricingCard
+AnalyticsChart
+LoadingState
+EmptyState
+
+==================================================
+OUTPUT
+==================================================
+
+Hasilkan:
+
+- struktur project Next.js lengkap
+- integrasi Supabase Auth
+- schema database
+- dashboard user
+- admin panel
+- invitation builder
+- public invitation page
+- reusable components
+- responsive UI
+- dummy seed data
+
+Pastikan code clean, modular, dan siap dikembangkan untuk production.
