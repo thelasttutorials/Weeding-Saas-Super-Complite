@@ -85,6 +85,7 @@ export interface IStorage {
     totalMessages: number;
     totalViews: number;
     attendingCount: number;
+    totalGiftConfirmations: number;
   }>;
 
   // Admin
@@ -359,7 +360,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUserStats(userId: string) {
     const userInvitations = await this.getInvitationsByUser(userId);
-    let totalRsvp = 0, totalMessages = 0, totalViews = 0, attendingCount = 0;
+    let totalRsvp = 0, totalMessages = 0, totalViews = 0, attendingCount = 0, totalGiftConfirmations = 0;
     for (const inv of userInvitations) {
       totalViews += inv.views;
       const rsvpList = await this.getRsvpsByInvitation(inv.id);
@@ -367,6 +368,8 @@ export class DatabaseStorage implements IStorage {
       attendingCount += rsvpList.filter(r => r.status === "attending").length;
       const msgs = await this.getAllMessagesByInvitation(inv.id);
       totalMessages += msgs.length;
+      const confs = await this.getGiftConfirmationsByInvitation(inv.id);
+      totalGiftConfirmations += confs.length;
     }
     return {
       totalInvitations: userInvitations.length,
@@ -374,6 +377,7 @@ export class DatabaseStorage implements IStorage {
       totalMessages,
       totalViews,
       attendingCount,
+      totalGiftConfirmations,
     };
   }
 

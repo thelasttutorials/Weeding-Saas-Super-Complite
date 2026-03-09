@@ -4,19 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { Mail, Users, MessageSquare, Eye, TrendingUp, PlusCircle, ArrowRight, Heart, Crown, Sparkles } from "lucide-react";
+import { Mail, Users, MessageSquare, Eye, TrendingUp, PlusCircle, ArrowRight, Heart, Crown, Sparkles, Gift } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Invitation } from "@shared/schema";
 
-const statConfig = [
-  { key: "totalInvitations", label: "Total Undangan", icon: Mail, color: "bg-rose-500/10 text-rose-600", bg: "bg-rose-50 dark:bg-rose-500/10" },
-  { key: "totalRsvp", label: "Total RSVP", icon: Users, color: "bg-violet-500/10 text-violet-600", bg: "bg-violet-50 dark:bg-violet-500/10" },
-  { key: "totalMessages", label: "Pesan Tamu", icon: MessageSquare, color: "bg-blue-500/10 text-blue-600", bg: "bg-blue-50 dark:bg-blue-500/10" },
-  { key: "totalViews", label: "Total Views", icon: Eye, color: "bg-emerald-500/10 text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-];
+interface UserStats {
+  totalInvitations: number;
+  totalRsvp: number;
+  totalMessages: number;
+  totalViews: number;
+  attendingCount: number;
+  totalGiftConfirmations: number;
+}
 
-function StatCard({ title, value, icon: Icon, iconColor, subtext, loading }: {
-  title: string; value: number | string; icon: any; iconColor: string; subtext?: string; loading?: boolean;
+function StatCard({ title, value, icon: Icon, iconColor, subtext, loading, testId }: {
+  title: string; value: number | string; icon: any; iconColor: string; subtext?: string; loading?: boolean; testId?: string;
 }) {
   return (
     <Card className="border border-card-border">
@@ -29,7 +31,7 @@ function StatCard({ title, value, icon: Icon, iconColor, subtext, loading }: {
         {loading ? (
           <Skeleton className="h-8 w-20 mb-1" />
         ) : (
-          <p className="text-2xl font-extrabold text-foreground tracking-tight" data-testid={`stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+          <p className="text-2xl font-extrabold text-foreground tracking-tight" data-testid={testId}>
             {value}
           </p>
         )}
@@ -43,13 +45,9 @@ function StatCard({ title, value, icon: Icon, iconColor, subtext, loading }: {
 export default function Overview() {
   const { user } = useAuth();
 
-  const { data: stats, isLoading: statsLoading } = useQuery<{
-    totalInvitations: number;
-    totalRsvp: number;
-    totalMessages: number;
-    totalViews: number;
-    attendingCount: number;
-  }>({ queryKey: ["/api/stats"] });
+  const { data: stats, isLoading: statsLoading } = useQuery<UserStats>({
+    queryKey: ["/api/stats"],
+  });
 
   const { data: invitations, isLoading: invLoading } = useQuery<Invitation[]>({
     queryKey: ["/api/invitations"],
@@ -62,12 +60,45 @@ export default function Overview() {
     ? Math.round((stats.attendingCount / stats.totalRsvp) * 100)
     : 0;
 
-  const statValues: Record<string, string | number> = {
-    totalInvitations: stats?.totalInvitations || 0,
-    totalRsvp: stats?.totalRsvp || 0,
-    totalMessages: stats?.totalMessages || 0,
-    totalViews: stats?.totalViews || 0,
-  };
+  const statCards = [
+    {
+      title: "Total Undangan",
+      value: stats?.totalInvitations ?? 0,
+      icon: Mail,
+      iconColor: "bg-rose-500/10 text-rose-600",
+      testId: "stat-total-undangan",
+    },
+    {
+      title: "Total RSVP",
+      value: stats?.totalRsvp ?? 0,
+      icon: Users,
+      iconColor: "bg-violet-500/10 text-violet-600",
+      subtext: stats ? `${stats.attendingCount} konfirmasi hadir` : undefined,
+      testId: "stat-total-rsvp",
+    },
+    {
+      title: "Pesan Tamu",
+      value: stats?.totalMessages ?? 0,
+      icon: MessageSquare,
+      iconColor: "bg-blue-500/10 text-blue-600",
+      testId: "stat-pesan-tamu",
+    },
+    {
+      title: "Total Views",
+      value: stats?.totalViews ?? 0,
+      icon: Eye,
+      iconColor: "bg-emerald-500/10 text-emerald-600",
+      subtext: "Jumlah kunjungan halaman undangan",
+      testId: "stat-total-views",
+    },
+    {
+      title: "Konfirmasi Hadiah",
+      value: stats?.totalGiftConfirmations ?? 0,
+      icon: Gift,
+      iconColor: "bg-amber-500/10 text-amber-600",
+      testId: "stat-konfirmasi-hadiah",
+    },
+  ];
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-7 animate-fade-in">
@@ -90,17 +121,32 @@ export default function Overview() {
         </Link>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statConfig.map((s) => (
+      {/* Stats Grid — 2 baris: 3 atas + 2 bawah */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {statCards.slice(0, 3).map((s) => (
           <StatCard
-            key={s.key}
-            title={s.label}
-            value={statValues[s.key]}
+            key={s.title}
+            title={s.title}
+            value={s.value}
             icon={s.icon}
-            iconColor={s.color}
-            subtext={s.key === "totalRsvp" ? `${stats?.attendingCount || 0} hadir` : undefined}
+            iconColor={s.iconColor}
+            subtext={s.subtext}
             loading={statsLoading}
+            testId={s.testId}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {statCards.slice(3).map((s) => (
+          <StatCard
+            key={s.title}
+            title={s.title}
+            value={s.value}
+            icon={s.icon}
+            iconColor={s.iconColor}
+            subtext={s.subtext}
+            loading={statsLoading}
+            testId={s.testId}
           />
         ))}
       </div>
@@ -113,7 +159,7 @@ export default function Overview() {
               <div>
                 <p className="font-bold text-foreground mb-0.5">Tingkat Kehadiran</p>
                 <p className="text-sm text-muted-foreground">
-                  {stats?.attendingCount} dari {stats?.totalRsvp} tamu mengonfirmasi kehadiran
+                  {stats?.attendingCount} dari {stats?.totalRsvp} tamu mengonfirmasi hadir
                 </p>
               </div>
               <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg">
@@ -180,9 +226,9 @@ export default function Overview() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Badge
                     variant={inv.status === "published" ? "default" : inv.status === "archived" ? "secondary" : "outline"}
-                    className="text-xs font-medium"
+                    className={`text-xs font-medium ${inv.status === "published" ? "bg-emerald-600 hover:bg-emerald-600 text-white border-0" : ""}`}
                   >
-                    {inv.status === "published" ? "Aktif" : inv.status === "archived" ? "Arsip" : "Draft"}
+                    {inv.status === "published" ? "✓ Live" : inv.status === "archived" ? "Arsip" : "Draft"}
                   </Badge>
                   <Link href={`/dashboard/builder/${inv.id}`}>
                     <Button size="sm" variant="ghost" className="text-xs h-7 font-medium" data-testid={`button-edit-${inv.id}`}>
