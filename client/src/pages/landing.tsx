@@ -5,9 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Heart, Mail, Users, BarChart3, Palette, CheckCircle, Star,
   ArrowRight, Clock, Gift, MessageSquare, ChevronDown, Sparkles,
-  Shield, Zap,
+  Shield, Zap, Menu, X, Instagram, Twitter, Facebook,
 } from "lucide-react";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const features = [
   { icon: Mail, title: "Undangan Digital", desc: "Buat undangan mobile-first yang indah dengan link unik yang bisa dibagikan ke siapa saja.", color: "bg-rose-500/10 text-rose-600" },
@@ -85,6 +86,14 @@ const stats = [
 
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const navLinks = [
+    ["#features", "Fitur"],
+    ["#how-it-works", "Cara Kerja"],
+    ["#pricing", "Harga"],
+    ["#faq", "FAQ"],
+  ];
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -98,14 +107,16 @@ export default function Landing() {
             </div>
             <span className="font-bold text-base text-foreground tracking-tight">WedSaaS</span>
           </div>
+
           <div className="hidden md:flex items-center gap-1 text-sm">
-            {[["#features", "Fitur"], ["#how-it-works", "Cara Kerja"], ["#pricing", "Harga"], ["#faq", "FAQ"]].map(([href, label]) => (
+            {navLinks.map(([href, label]) => (
               <a key={href} href={href} className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors font-medium">
                 {label}
               </a>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="hidden md:flex items-center gap-2">
             <Link href="/login">
               <Button variant="ghost" size="sm" className="font-medium" data-testid="button-login">Masuk</Button>
             </Link>
@@ -115,7 +126,57 @@ export default function Landing() {
               </Button>
             </Link>
           </div>
+
+          {/* Mobile Menu Trigger */}
+          <div className="md:hidden flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              data-testid="button-mobile-menu"
+            >
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile Nav Dropdown */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden border-b border-border bg-background overflow-hidden"
+            >
+              <div className="flex flex-col p-4 space-y-2">
+                {navLinks.map(([href, label]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    className="px-4 py-3 rounded-md text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {label}
+                  </a>
+                ))}
+                <div className="pt-4 flex flex-col gap-2">
+                  <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="outline" className="w-full justify-center" data-testid="mobile-button-login">
+                      Masuk
+                    </Button>
+                  </Link>
+                  <Link href="/register" onClick={() => setIsMenuOpen(false)}>
+                    <Button className="w-full justify-center" data-testid="mobile-button-get-started">
+                      Coba Gratis
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero */}
@@ -433,26 +494,73 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12 px-4 sm:px-6">
+      <footer className="bg-card border-t border-card-border pt-16 pb-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Heart className="w-4 h-4 text-primary-foreground fill-current" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-16">
+            {/* Brand Column */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-md">
+                  <Heart className="w-5 h-5 text-primary-foreground fill-current" />
+                </div>
+                <span className="font-bold text-xl text-foreground tracking-tight">WedSaaS</span>
               </div>
-              <div>
-                <span className="font-bold text-foreground">WedSaaS</span>
-                <p className="text-xs text-muted-foreground">Platform Undangan Pernikahan Digital</p>
+              <p className="text-muted-foreground text-base max-w-sm mb-6 leading-relaxed">
+                Platform SaaS undangan pernikahan digital terbaik di Indonesia. Bantu ribuan pasangan menciptakan momen tak terlupakan dengan teknologi modern.
+              </p>
+              <div className="flex gap-4">
+                {[Instagram, Twitter, Facebook].map((Icon, i) => (
+                  <Button key={i} size="icon" variant="ghost" className="rounded-full hover-elevate" data-testid={`button-social-${i}`}>
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                  </Button>
+                ))}
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">© 2025 WedSaaS. Dibuat dengan ❤️ untuk setiap pasangan.</p>
-            <div className="flex gap-1 text-sm">
-              {["Privacy", "Terms", "Contact"].map((item) => (
-                <a key={item} href="#" className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors font-medium">
-                  {item}
-                </a>
-              ))}
+
+            {/* Produk Column */}
+            <div>
+              <h4 className="font-bold text-foreground mb-6">Produk</h4>
+              <ul className="space-y-4">
+                {navLinks.map(([href, label]) => (
+                  <li key={href}>
+                    <a href={href} className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium">
+                      {label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
+
+            {/* Bantuan Column */}
+            <div>
+              <h4 className="font-bold text-foreground mb-6">Bantuan</h4>
+              <ul className="space-y-4">
+                <li>
+                  <Link href="/login">
+                    <span className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium cursor-pointer">Masuk ke Akun</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/register">
+                    <span className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium cursor-pointer">Daftar Gratis</span>
+                  </Link>
+                </li>
+                <li>
+                  <a href="mailto:support@wedsaas.com" className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium">
+                    Hubungi Support
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-card-border flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <p className="text-xs text-tertiary font-medium">
+              &copy; {new Date().getFullYear()} WedSaaS. Seluruh hak cipta dilindungi.
+            </p>
+            <p className="text-xs text-tertiary font-medium italic">
+              "Mewujudkan Pernikahan Impian di Era Digital"
+            </p>
           </div>
         </div>
       </footer>

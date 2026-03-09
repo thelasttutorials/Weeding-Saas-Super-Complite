@@ -121,23 +121,9 @@ export default function Overview() {
         </Link>
       </div>
 
-      {/* Stats Grid — 2 baris: 3 atas + 2 bawah */}
+      {/* Stats Grid — Uniform grid-cols-2 sm:grid-cols-3 for all 5 cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {statCards.slice(0, 3).map((s) => (
-          <StatCard
-            key={s.title}
-            title={s.title}
-            value={s.value}
-            icon={s.icon}
-            iconColor={s.iconColor}
-            subtext={s.subtext}
-            loading={statsLoading}
-            testId={s.testId}
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        {statCards.slice(3).map((s) => (
+        {statCards.map((s) => (
           <StatCard
             key={s.title}
             title={s.title}

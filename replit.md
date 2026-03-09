@@ -31,6 +31,8 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `/admin` - Platform overview stats + recent users/invitations + quick actions
 - `/admin/users` - User management (plan, suspend/activate, toggle admin, reg date)
 - `/admin/invitations` - All invitations (publish/unpublish/archive, views count)
+- `/admin/themes` - Wedding Theme Library (CRUD, duplicate, publish, search/filter)
+- `/admin/themes/:id/builder` - Visual Theme Builder (full-screen, no admin sidebar, drag-drop)
 - `/admin/testimonials` - Testimonials CRUD (publish/unpublish, star rating)
 - `/admin/faqs` - FAQ CRUD (category filter, sort order, active toggle)
 - `/admin/pricing` - Pricing plans CRUD + plan features management
@@ -41,7 +43,8 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 
 ### Key Features (ALL ACTIVE WITH REAL DB)
 - Multi-tenant: each user can have many invitations (RLS enforced)
-- 4 wedding themes: Classic Elegant, Minimal Modern, Romantic Floral, Luxury Gold
+- 4 built-in wedding themes: Classic Elegant, Minimal Modern, Romantic Floral, Luxury Gold
+- **Admin Wedding Theme Builder**: Elementor-like visual builder with 14 block types, drag-drop reorder, content/style inspector, global settings (colors, fonts, spacing)
 - RSVP management with guest count, search, filter
 - Guest messages with visibility toggle + newest/oldest sort
 - Digital gift (bank/e-wallet) accounts
@@ -55,7 +58,7 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - Admin website settings & SEO settings stored in DB
 - Audit logging for all admin actions
 
-## Database Tables (20 total)
+## Database Tables (22 total)
 ### User/Invitation Tables (RLS enforced)
 - `users` - Accounts with plan (free/premium/business) + isAdmin + isSuspended
 - `invitations` - Wedding invitations (slug, theme, status, views)
@@ -79,6 +82,10 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `website_settings` - Singleton platform settings (id=1)
 - `seo_settings` - Singleton SEO config (id=1)
 - `session` - Express session store
+
+### Theme Builder Tables
+- `wedding_themes` - Custom theme definitions (name, slug, status, globalSettings JSON, createdBy)
+- `wedding_theme_blocks` - Ordered block list per theme (blockType, sortOrder, content JSON, style JSON, isVisible)
 
 ## Row Level Security Architecture
 PostgreSQL RLS enforces that users only access their own data at the database level.
@@ -144,7 +151,32 @@ This project uses Express v5 with `@types/express` v5. Route params are typed as
 - `GET/PUT /api/admin/settings/seo`
 - `GET /api/admin/audit-logs`
 
+### Admin Theme Builder (requireAdmin)
+- `GET /api/admin/themes` — list all themes
+- `POST /api/admin/themes` — create theme
+- `GET /api/admin/themes/:id` — get theme + blocks
+- `PATCH /api/admin/themes/:id` — update theme
+- `DELETE /api/admin/themes/:id` — delete theme
+- `POST /api/admin/themes/:id/duplicate` — duplicate theme
+- `POST /api/admin/themes/:id/publish` — publish theme
+- `POST /api/admin/themes/:id/archive` — archive theme
+- `GET/POST /api/admin/themes/:id/blocks` — list/add blocks
+- `PATCH /api/admin/themes/:themeId/blocks/:blockId` — update block
+- `DELETE /api/admin/themes/:themeId/blocks/:blockId` — delete block
+- `POST /api/admin/themes/:id/blocks/reorder` — reorder blocks
+
 ### Public (no auth)
 - `GET /api/public/:slug`, `POST /api/public/:slug/rsvp`
 - `POST /api/public/:slug/messages`, `GET /api/public/:slug/messages`
 - `POST /api/public/:slug/gift-confirmation`
+- `GET /api/public/themes/:id` — get published theme + blocks (for custom invite rendering)
+
+## Theme Builder Architecture
+- `client/src/lib/theme-blocks.ts` — 14 block type definitions with labels, icons, defaultContent, defaultStyle
+- `client/src/pages/admin/themes.tsx` — Theme library grid page
+- `client/src/pages/admin/theme-builder.tsx` — Full-screen 3-panel visual builder (left: block library + global settings, center: sortable canvas, right: content/style inspector)
+- `client/src/components/theme-renderer/` — Block renderer components (index.tsx + 14 individual block files)
+- Invitations with `customThemeId` use ThemeRenderer on /invite/:slug; others use built-in themes
+
+## 14 Block Types
+cover, couple, quote, countdown, story, events, maps, gallery, rsvp, messages, gifts, closing, divider, text

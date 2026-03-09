@@ -12,7 +12,7 @@ import { withUserContext } from "./db";
 import {
   insertUserSchema, insertInvitationSchema, insertRsvpSchema, insertGuestMessageSchema, insertGiftAccountSchema,
   insertTestimonialSchema, insertFaqSchema, insertPricingPlanSchema, insertWebsiteSettingsSchema, insertSeoSettingsSchema,
-  insertPricingPlanFeatureSchema
+  insertPricingPlanFeatureSchema, insertWeddingThemeSchema, insertWeddingThemeBlockSchema
 } from "@shared/schema";
 import bcrypt from "bcrypt";
 import passport from "passport";
@@ -801,7 +801,124 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ success: true });
   });
 
+  // ── Wedding Theme Builder routes (admin only) ────────────────────────────────
+
+  app.get("/api/admin/themes", requireAdmin, async (req, res) => {
+    res.json(await storage.getWeddingThemes());
+  });
+
+  app.post("/api/admin/themes", requireAdmin, async (req, res) => {
+    try {
+      const data = insertWeddingThemeSchema.parse({ ...req.body, createdBy: userId(req) });
+      const theme = await storage.createWeddingTheme(data);
+      await storage.createAuditLog({ adminId: userId(req), action: "create", entity: "wedding_theme", entityId: theme.id, description: `Tema baru dibuat: ${theme.name}` });
+      res.json(theme);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/themes/:id", requireAdmin, async (req, res) => {
+    const theme = await storage.getWeddingTheme(req.params.id);
+    if (!theme) return res.status(404).json({ message: "Theme not found" });
+    const blocks = await storage.getThemeBlocks(theme.id);
+    res.json({ ...theme, blocks });
+  });
+
+  app.patch("/api/admin/themes/:id", requireAdmin, async (req, res) => {
+    try {
+      const theme = await storage.updateWeddingTheme(req.params.id, req.body);
+      if (!theme) return res.status(404).json({ message: "Theme not found" });
+      await storage.createAuditLog({ adminId: userId(req), action: "update", entity: "wedding_theme", entityId: theme.id, description: `Tema diperbarui: ${theme.name}` });
+      res.json(theme);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/admin/themes/:id", requireAdmin, async (req, res) => {
+    await storage.deleteWeddingTheme(req.params.id);
+    await storage.createAuditLog({ adminId: userId(req), action: "delete", entity: "wedding_theme", entityId: req.params.id, description: "Tema dihapus" });
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/themes/:id/duplicate", requireAdmin, async (req, res) => {
+    try {
+      const newTheme = await storage.duplicateWeddingTheme(req.params.id, userId(req));
+      await storage.createAuditLog({ adminId: userId(req), action: "create", entity: "wedding_theme", entityId: newTheme.id, description: `Tema diduplikasi: ${newTheme.name}` });
+      res.json(newTheme);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/admin/themes/:id/publish", requireAdmin, async (req, res) => {
+    const theme = await storage.updateWeddingTheme(req.params.id, { status: "published" });
+    if (!theme) return res.status(404).json({ message: "Theme not found" });
+    await storage.createAuditLog({ adminId: userId(req), action: "publish", entity: "wedding_theme", entityId: theme.id, description: `Tema dipublish: ${theme.name}` });
+    res.json(theme);
+  });
+
+  app.post("/api/admin/themes/:id/archive", requireAdmin, async (req, res) => {
+    const theme = await storage.updateWeddingTheme(req.params.id, { status: "archived" });
+    if (!theme) return res.status(404).json({ message: "Theme not found" });
+    res.json(theme);
+  });
+
+  // Theme Blocks
+  app.get("/api/admin/themes/:id/blocks", requireAdmin, async (req, res) => {
+    res.json(await storage.getThemeBlocks(req.params.id));
+  });
+
+  app.post("/api/admin/themes/:id/blocks", requireAdmin, async (req, res) => {
+    try {
+      const blocks = await storage.getThemeBlocks(req.params.id);
+      const maxOrder = blocks.length > 0 ? Math.max(...blocks.map(b => b.sortOrder)) + 1 : 0;
+      const data = insertWeddingThemeBlockSchema.parse({
+        ...req.body,
+        themeId: req.params.id,
+        sortOrder: req.body.sortOrder ?? maxOrder,
+      });
+      const block = await storage.createThemeBlock(data);
+      res.json(block);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/admin/themes/:themeId/blocks/:blockId", requireAdmin, async (req, res) => {
+    try {
+      const block = await storage.updateThemeBlock(req.params.blockId, req.body);
+      if (!block) return res.status(404).json({ message: "Block not found" });
+      res.json(block);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.delete("/api/admin/themes/:themeId/blocks/:blockId", requireAdmin, async (req, res) => {
+    await storage.deleteThemeBlock(req.params.blockId);
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/themes/:id/blocks/reorder", requireAdmin, async (req, res) => {
+    try {
+      const { blockIds } = req.body as { blockIds: string[] };
+      await storage.reorderThemeBlocks(req.params.id, blockIds);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   // ── Public invitation routes (no auth, RLS allows published data) ────────────
+
+  app.get("/api/public/themes/:id", async (req, res) => {
+    const theme = await storage.getWeddingTheme(req.params.id);
+    if (!theme || theme.status !== "published") return res.status(404).json({ message: "Theme not found" });
+    const blocks = await storage.getThemeBlocks(theme.id);
+    res.json({ ...theme, blocks });
+  });
 
   app.get("/api/public/:slug", async (req, res) => {
     const inv = await storage.getFullInvitationBySlug(req.params.slug);

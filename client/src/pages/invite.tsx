@@ -11,8 +11,9 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Calendar, Clock, Heart, Copy, ExternalLink, Music, Video, Gift, MessageCircle, Users, ChevronDown, CheckCircle, Loader2 } from "lucide-react";
-import type { FullInvitation, GuestMessage } from "@shared/schema";
+import type { FullInvitation, GuestMessage, WeddingTheme, WeddingThemeBlock } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import ThemeRenderer from "@/components/theme-renderer";
 
 const rsvpSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter"),
@@ -99,6 +100,12 @@ export default function InvitePage() {
       if (!r.ok) throw new Error("Invitation not found");
       return r.json();
     }),
+  });
+
+  const { data: customTheme } = useQuery<{ theme: WeddingTheme, blocks: WeddingThemeBlock[] }>({
+    queryKey: ["/api/public/themes", invitation?.customThemeId],
+    queryFn: () => fetch(`/api/public/themes/${invitation?.customThemeId}`).then(r => r.json()),
+    enabled: !!invitation?.customThemeId,
   });
 
   const { data: messages } = useQuery<GuestMessage[]>({
@@ -193,6 +200,20 @@ export default function InvitePage() {
           <p className="text-stone-400 text-sm">Link undangan tidak valid atau belum dipublish.</p>
         </div>
       </div>
+    );
+  }
+
+  if (invitation.customThemeId && customTheme) {
+    const globalSettings = typeof customTheme.theme.globalSettings === 'string' 
+      ? JSON.parse(customTheme.theme.globalSettings) 
+      : customTheme.theme.globalSettings;
+      
+    return (
+      <ThemeRenderer 
+        blocks={customTheme.blocks} 
+        invitationData={invitation} 
+        globalSettings={globalSettings}
+      />
     );
   }
 

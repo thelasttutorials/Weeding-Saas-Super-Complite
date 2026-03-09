@@ -34,12 +34,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           {!isBuilder && (
-            <header className="flex items-center justify-between h-14 px-5 border-b border-border bg-background shrink-0">
+            <header className="flex items-center justify-between min-h-16 px-5 border-b border-border bg-background shrink-0">
               <div className="flex items-center gap-3">
                 <SidebarTrigger data-testid="button-sidebar-toggle" className="-ml-1" />
                 <div className="h-4 w-px bg-border" />
-                <div>
+                <div className="flex flex-col justify-center">
                   <h1 className="text-sm font-semibold text-foreground leading-tight">{meta.title}</h1>
+                  {meta.description && (
+                    <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+                      {meta.description}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">

@@ -35,6 +35,7 @@ export const invitations = pgTable("invitations", {
   giftAddress: text("gift_address").notNull().default(""),
   views: integer("views").notNull().default(0),
   publishedAt: timestamp("published_at"),
+  customThemeId: varchar("custom_theme_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -246,6 +247,33 @@ export const seoSettings = pgTable("seo_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ── Wedding Theme Builder tables ──────────────────────────────────────────────
+
+export const weddingThemes = pgTable("wedding_themes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description").notNull().default(""),
+  thumbnailUrl: text("thumbnail_url"),
+  status: text("status").notNull().default("draft"), // draft | published | archived
+  globalSettings: text("global_settings").notNull().default("{}"), // JSON string
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const weddingThemeBlocks = pgTable("wedding_theme_blocks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  themeId: varchar("theme_id").notNull().references(() => weddingThemes.id, { onDelete: "cascade" }),
+  blockType: text("block_type").notNull(), // cover|couple|quote|countdown|story|events|maps|gallery|rsvp|messages|gifts|closing|divider|text
+  sortOrder: integer("sort_order").notNull().default(0),
+  content: text("content").notNull().default("{}"), // JSON string
+  style: text("style").notNull().default("{}"),     // JSON string
+  isVisible: boolean("is_visible").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ── Insert schemas ───────────────────────────────────────────────────────────
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -268,6 +296,8 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export const insertWebsiteSettingsSchema = createInsertSchema(websiteSettings).omit({ id: true, updatedAt: true });
 export const insertSeoSettingsSchema = createInsertSchema(seoSettings).omit({ id: true, updatedAt: true });
+export const insertWeddingThemeSchema = createInsertSchema(weddingThemes).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWeddingThemeBlockSchema = createInsertSchema(weddingThemeBlocks).omit({ id: true, createdAt: true, updatedAt: true });
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -302,6 +332,11 @@ export type InsertPricingPlanFeature = z.infer<typeof insertPricingPlanFeatureSc
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type WebsiteSettings = typeof websiteSettings.$inferSelect;
 export type SeoSettings = typeof seoSettings.$inferSelect;
+
+export type WeddingTheme = typeof weddingThemes.$inferSelect;
+export type InsertWeddingTheme = z.infer<typeof insertWeddingThemeSchema>;
+export type WeddingThemeBlock = typeof weddingThemeBlocks.$inferSelect;
+export type InsertWeddingThemeBlock = z.infer<typeof insertWeddingThemeBlockSchema>;
 
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;

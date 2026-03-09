@@ -5,7 +5,7 @@ import {
   invitationContent, invitationGallery, rsvps, guestMessages,
   giftAccounts, giftConfirmations, subscriptions, whiteLabelSettings,
   testimonials, faqs, pricingPlans, pricingPlanFeatures, auditLogs,
-  websiteSettings, seoSettings,
+  websiteSettings, seoSettings, weddingThemes, weddingThemeBlocks,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
@@ -19,6 +19,8 @@ import {
   type PricingPlanFeature, type InsertPricingPlanFeature,
   type AuditLog, type InsertAuditLog,
   type WebsiteSettings, type SeoSettings,
+  type WeddingTheme, type InsertWeddingTheme,
+  type WeddingThemeBlock, type InsertWeddingThemeBlock,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -138,6 +140,20 @@ export interface IStorage {
 
   getAllUsers(): Promise<Omit<User, "password">[]>;
   getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
+
+  // Wedding Theme Builder
+  getWeddingThemes(): Promise<WeddingTheme[]>;
+  getWeddingTheme(id: string): Promise<WeddingTheme | undefined>;
+  getWeddingThemeBySlug(slug: string): Promise<WeddingTheme | undefined>;
+  createWeddingTheme(data: InsertWeddingTheme): Promise<WeddingTheme>;
+  updateWeddingTheme(id: string, data: Partial<WeddingTheme>): Promise<WeddingTheme | undefined>;
+  deleteWeddingTheme(id: string): Promise<void>;
+  duplicateWeddingTheme(id: string, createdBy: string): Promise<WeddingTheme>;
+  getThemeBlocks(themeId: string): Promise<WeddingThemeBlock[]>;
+  createThemeBlock(data: InsertWeddingThemeBlock): Promise<WeddingThemeBlock>;
+  updateThemeBlock(id: string, data: Partial<WeddingThemeBlock>): Promise<WeddingThemeBlock | undefined>;
+  deleteThemeBlock(id: string): Promise<void>;
+  reorderThemeBlocks(themeId: string, blockIds: string[]): Promise<void>;
   getPlatformStats(): Promise<{
     totalUsers: number;
     totalInvitations: number;
@@ -662,6 +678,99 @@ export class DatabaseStorage implements IStorage {
       totalTestimonials: tCount.count,
       totalFaqs: fCount.count,
     };
+  }
+
+  // ── Wedding Theme Builder ─────────────────────────────────────────────────
+
+  async getWeddingThemes(): Promise<WeddingTheme[]> {
+    return this.db.select().from(weddingThemes).orderBy(desc(weddingThemes.createdAt));
+  }
+
+  async getWeddingTheme(id: string): Promise<WeddingTheme | undefined> {
+    const [theme] = await this.db.select().from(weddingThemes).where(eq(weddingThemes.id, id));
+    return theme;
+  }
+
+  async getWeddingThemeBySlug(slug: string): Promise<WeddingTheme | undefined> {
+    const [theme] = await this.db.select().from(weddingThemes).where(eq(weddingThemes.slug, slug));
+    return theme;
+  }
+
+  async createWeddingTheme(data: InsertWeddingTheme): Promise<WeddingTheme> {
+    const [theme] = await this.db.insert(weddingThemes).values({ ...data, id: randomUUID() }).returning();
+    return theme;
+  }
+
+  async updateWeddingTheme(id: string, data: Partial<WeddingTheme>): Promise<WeddingTheme | undefined> {
+    const [theme] = await this.db.update(weddingThemes)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(weddingThemes.id, id))
+      .returning();
+    return theme;
+  }
+
+  async deleteWeddingTheme(id: string): Promise<void> {
+    await this.db.delete(weddingThemes).where(eq(weddingThemes.id, id));
+  }
+
+  async duplicateWeddingTheme(id: string, createdBy: string): Promise<WeddingTheme> {
+    const original = await this.getWeddingTheme(id);
+    if (!original) throw new Error("Theme not found");
+    const blocks = await this.getThemeBlocks(id);
+    const newSlug = `${original.slug}-copy-${Date.now()}`;
+    const [newTheme] = await this.db.insert(weddingThemes).values({
+      id: randomUUID(),
+      name: `${original.name} (Copy)`,
+      slug: newSlug,
+      description: original.description,
+      thumbnailUrl: original.thumbnailUrl,
+      status: "draft",
+      globalSettings: original.globalSettings,
+      createdBy,
+    }).returning();
+    for (const block of blocks) {
+      await this.db.insert(weddingThemeBlocks).values({
+        id: randomUUID(),
+        themeId: newTheme.id,
+        blockType: block.blockType,
+        sortOrder: block.sortOrder,
+        content: block.content,
+        style: block.style,
+        isVisible: block.isVisible,
+      });
+    }
+    return newTheme;
+  }
+
+  async getThemeBlocks(themeId: string): Promise<WeddingThemeBlock[]> {
+    return this.db.select().from(weddingThemeBlocks)
+      .where(eq(weddingThemeBlocks.themeId, themeId))
+      .orderBy(weddingThemeBlocks.sortOrder);
+  }
+
+  async createThemeBlock(data: InsertWeddingThemeBlock): Promise<WeddingThemeBlock> {
+    const [block] = await this.db.insert(weddingThemeBlocks).values({ ...data, id: randomUUID() }).returning();
+    return block;
+  }
+
+  async updateThemeBlock(id: string, data: Partial<WeddingThemeBlock>): Promise<WeddingThemeBlock | undefined> {
+    const [block] = await this.db.update(weddingThemeBlocks)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(weddingThemeBlocks.id, id))
+      .returning();
+    return block;
+  }
+
+  async deleteThemeBlock(id: string): Promise<void> {
+    await this.db.delete(weddingThemeBlocks).where(eq(weddingThemeBlocks.id, id));
+  }
+
+  async reorderThemeBlocks(themeId: string, blockIds: string[]): Promise<void> {
+    for (let i = 0; i < blockIds.length; i++) {
+      await this.db.update(weddingThemeBlocks)
+        .set({ sortOrder: i, updatedAt: new Date() })
+        .where(and(eq(weddingThemeBlocks.id, blockIds[i]), eq(weddingThemeBlocks.themeId, themeId)));
+    }
   }
 }
 
