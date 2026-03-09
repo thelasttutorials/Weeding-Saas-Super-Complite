@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,15 +12,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2 } from "lucide-react";
-import { Link } from "wouter";
+import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Invitation } from "@shared/schema";
 
 const createSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Only lowercase letters, numbers, and hyphens"),
+  title: z.string().min(3, "Judul minimal 3 karakter"),
+  slug: z.string().min(3, "URL minimal 3 karakter").regex(/^[a-z0-9-]+$/, "Hanya huruf kecil, angka, dan tanda hubung"),
   theme: z.enum(["classic_elegant", "minimal_modern", "romantic_floral", "luxury_gold"]),
 });
 
@@ -31,12 +31,24 @@ const themeLabels: Record<string, string> = {
   luxury_gold: "Luxury Gold",
 };
 
+function toSlug(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 60);
+}
+
 export default function Invitations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: invitations, isLoading } = useQuery<Invitation[]>({ queryKey: ["/api/invitations"] });
 
@@ -45,17 +57,70 @@ export default function Invitations() {
     defaultValues: { title: "", slug: "", theme: "classic_elegant" },
   });
 
+  const watchedSlug = form.watch("slug");
+
+  // Auto-fill slug from title
+  const handleTitleChange = (value: string) => {
+    form.setValue("title", value);
+    const auto = toSlug(value);
+    if (auto) {
+      form.setValue("slug", auto, { shouldValidate: true });
+    }
+  };
+
+  // Debounced slug availability check
+  useEffect(() => {
+    if (!createOpen) return;
+    const slug = watchedSlug?.trim();
+    if (!slug || slug.length < 3 || !/^[a-z0-9-]+$/.test(slug)) {
+      setSlugStatus("idle");
+      return;
+    }
+    setSlugStatus("checking");
+    if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current);
+    slugCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/invitations/check-slug?slug=${encodeURIComponent(slug)}`);
+        const data = await res.json();
+        setSlugStatus(data.available ? "available" : "taken");
+        if (!data.available) {
+          form.setError("slug", { message: "URL ini sudah dipakai, coba yang lain" });
+        } else {
+          form.clearErrors("slug");
+        }
+      } catch {
+        setSlugStatus("idle");
+      }
+    }, 500);
+    return () => { if (slugCheckTimer.current) clearTimeout(slugCheckTimer.current); };
+  }, [watchedSlug, createOpen]);
+
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof createSchema>) =>
-      apiRequest("POST", "/api/invitations", { ...data, userId: "placeholder" }),
-    onSuccess: () => {
+    mutationFn: async (data: z.infer<typeof createSchema>) => {
+      const res = await apiRequest("POST", "/api/invitations", data);
+      return res.json() as Promise<Invitation>;
+    },
+    onSuccess: (newInvitation: Invitation) => {
       queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       setCreateOpen(false);
       form.reset();
-      toast({ title: "Undangan dibuat!", description: "Mulai edit undanganmu sekarang." });
+      setSlugStatus("idle");
+      toast({
+        title: "Undangan berhasil dibuat!",
+        description: `Mengarahkan ke editor undangan...`,
+      });
+      setLocation(`/dashboard/builder/${newInvitation.id}`);
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: any) => {
+      const msg = err.message || "Gagal membuat undangan";
+      if (msg.includes("slug") || msg.includes("URL")) {
+        form.setError("slug", { message: msg });
+        setSlugStatus("taken");
+      } else {
+        toast({ title: "Gagal membuat undangan", description: msg, variant: "destructive" });
+      }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -85,6 +150,16 @@ export default function Invitations() {
     navigator.clipboard.writeText(`${window.location.origin}/invite/${slug}`);
     toast({ title: "Link disalin!" });
   };
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      form.reset();
+      setSlugStatus("idle");
+    }
+    setCreateOpen(open);
+  };
+
+  const canSubmit = createMutation.isPending === false && slugStatus !== "taken" && slugStatus !== "checking";
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -166,13 +241,14 @@ export default function Invitations() {
                       size="sm"
                       variant="ghost"
                       onClick={() => copyLink(inv.slug)}
+                      title="Salin link undangan"
                       data-testid={`button-copy-link-${inv.id}`}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
                     {inv.status === "published" && (
                       <a href={`/invite/${inv.slug}`} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="ghost" data-testid={`button-preview-${inv.id}`}>
+                        <Button size="sm" variant="ghost" title="Lihat undangan" data-testid={`button-preview-${inv.id}`}>
                           <ExternalLink className="w-4 h-4" />
                         </Button>
                       </a>
@@ -182,6 +258,7 @@ export default function Invitations() {
                       variant="ghost"
                       onClick={() => archiveMutation.mutate(inv.id)}
                       disabled={inv.status === "archived"}
+                      title="Arsipkan"
                       data-testid={`button-archive-${inv.id}`}
                     >
                       <Archive className="w-4 h-4" />
@@ -197,6 +274,7 @@ export default function Invitations() {
                       variant="ghost"
                       onClick={() => setDeleteId(inv.id)}
                       className="text-destructive"
+                      title="Hapus"
                       data-testid={`button-delete-${inv.id}`}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -210,62 +288,106 @@ export default function Invitations() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={handleDialogClose}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Buat Undangan Baru</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(d => createMutation.mutate(d))} className="space-y-4">
-              <FormField control={form.control} name="title" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Judul Undangan</FormLabel>
-                  <FormControl><Input placeholder="Pernikahan Ahmad & Sari" data-testid="input-title" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="slug" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL Undangan</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center border border-input rounded-md overflow-hidden">
-                      <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-input">/invite/</span>
-                      <Input
-                        placeholder="ahmad-dan-sari"
-                        className="border-0 rounded-none focus-visible:ring-0"
-                        data-testid="input-slug"
-                        {...field}
-                        onChange={e => field.onChange(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="theme" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tema</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Judul Undangan</FormLabel>
                     <FormControl>
-                      <SelectTrigger data-testid="select-theme">
-                        <SelectValue placeholder="Pilih tema" />
-                      </SelectTrigger>
+                      <Input
+                        placeholder="Pernikahan Ahmad & Sari"
+                        data-testid="input-title"
+                        {...field}
+                        onChange={e => handleTitleChange(e.target.value)}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="classic_elegant">Classic Elegant</SelectItem>
-                      <SelectItem value="minimal_modern">Minimal Modern</SelectItem>
-                      <SelectItem value="romantic_floral">Romantic Floral</SelectItem>
-                      <SelectItem value="luxury_gold">Luxury Gold</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="slug"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL Undangan</FormLabel>
+                    <FormControl>
+                      <div className="flex items-center border border-input rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-0">
+                        <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-input whitespace-nowrap">/invite/</span>
+                        <div className="flex-1 flex items-center">
+                          <Input
+                            placeholder="ahmad-dan-sari"
+                            className="border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                            data-testid="input-slug"
+                            {...field}
+                            onChange={e => {
+                              const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                              field.onChange(v);
+                            }}
+                          />
+                          <span className="px-2 flex-shrink-0">
+                            {slugStatus === "checking" && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                            {slugStatus === "available" && <CheckCircle className="w-4 h-4 text-green-600" />}
+                            {slugStatus === "taken" && <XCircle className="w-4 h-4 text-destructive" />}
+                          </span>
+                        </div>
+                      </div>
+                    </FormControl>
+                    {slugStatus === "available" && (
+                      <p className="text-xs text-green-600">URL tersedia</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="theme"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tema</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-theme">
+                          <SelectValue placeholder="Pilih tema" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="classic_elegant">Classic Elegant</SelectItem>
+                        <SelectItem value="minimal_modern">Minimal Modern</SelectItem>
+                        <SelectItem value="romantic_floral">Romantic Floral</SelectItem>
+                        <SelectItem value="luxury_gold">Luxury Gold</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Batal</Button>
-                <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit-create">
-                  {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Buat Undangan
+                <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!canSubmit}
+                  data-testid="button-submit-create"
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Membuat...
+                    </>
+                  ) : (
+                    "Buat Undangan"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -286,9 +408,10 @@ export default function Invitations() {
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              className="bg-destructive text-destructive-foreground"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Hapus
             </AlertDialogAction>
           </AlertDialogFooter>

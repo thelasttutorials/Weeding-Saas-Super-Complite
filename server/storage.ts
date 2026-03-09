@@ -3,12 +3,14 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import {
   users, invitations, invitationCouples, invitationEvents,
   invitationContent, invitationGallery, rsvps, guestMessages,
-  giftAccounts, giftConfirmations,
+  giftAccounts, giftConfirmations, subscriptions, whiteLabelSettings,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
   type InsertGuestMessage, type GiftAccount, type InsertGiftAccount,
   type GiftConfirmation, type FullInvitation,
+  type Subscription, type InsertSubscription,
+  type WhiteLabelSettings, type InsertWhiteLabel,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -25,6 +27,7 @@ export interface IStorage {
   getInvitationById(id: string): Promise<Invitation | undefined>;
   getInvitationBySlug(slug: string): Promise<Invitation | undefined>;
   getFullInvitationBySlug(slug: string): Promise<FullInvitation | undefined>;
+  checkSlugAvailable(slug: string, excludeId?: string): Promise<boolean>;
   createInvitation(inv: InsertInvitation): Promise<Invitation>;
   updateInvitation(id: string, data: Partial<Invitation>): Promise<Invitation | undefined>;
   deleteInvitation(id: string): Promise<void>;
@@ -65,6 +68,15 @@ export interface IStorage {
   // Gift Confirmations
   getGiftConfirmationsByInvitation(invId: string): Promise<GiftConfirmation[]>;
   createGiftConfirmation(data: Omit<GiftConfirmation, "id" | "createdAt">): Promise<GiftConfirmation>;
+
+  // Subscriptions
+  getSubscriptionByUser(userId: string): Promise<Subscription | undefined>;
+  createSubscription(data: InsertSubscription): Promise<Subscription>;
+  updateSubscription(id: string, data: Partial<Subscription>): Promise<Subscription | undefined>;
+
+  // White Label
+  getWhiteLabelByUser(userId: string): Promise<WhiteLabelSettings | undefined>;
+  upsertWhiteLabel(data: InsertWhiteLabel): Promise<WhiteLabelSettings>;
 
   // Stats
   getUserStats(userId: string): Promise<{
@@ -122,6 +134,13 @@ export class DatabaseStorage implements IStorage {
     return inv;
   }
 
+  async checkSlugAvailable(slug: string, excludeId?: string): Promise<boolean> {
+    const existing = await this.getInvitationBySlug(slug);
+    if (!existing) return true;
+    if (excludeId && existing.id === excludeId) return true;
+    return false;
+  }
+
   async getFullInvitationBySlug(slug: string): Promise<FullInvitation | undefined> {
     const inv = await this.getInvitationBySlug(slug);
     if (!inv) return undefined;
@@ -144,14 +163,29 @@ export class DatabaseStorage implements IStorage {
 
   async createInvitation(data: InsertInvitation): Promise<Invitation> {
     const [inv] = await this.db.insert(invitations).values({ ...data, id: randomUUID() }).returning();
-    await this.db.insert(invitationCouples).values({ id: randomUUID(), invitationId: inv.id, brideName: "", groomName: "", brideParents: "", groomParents: "", loveStory: "" });
-    await this.db.insert(invitationEvents).values({ id: randomUUID(), invitationId: inv.id, akadDate: "", akadTime: "", akadVenue: "", akadMapsLink: "", receptionDate: "", receptionTime: "", receptionVenue: "", receptionMapsLink: "" });
-    await this.db.insert(invitationContent).values({ id: randomUUID(), invitationId: inv.id, openingQuote: "", closingMessage: "", hashtag: "", livestreamLink: "", backgroundMusic: "", enableRsvp: true, rsvpDeadline: "", maxGuests: 2 });
+    // Auto-init child records so builder tabs always have data to load
+    await this.db.insert(invitationCouples).values({
+      id: randomUUID(), invitationId: inv.id,
+      brideName: "", groomName: "", brideParents: "", groomParents: "", loveStory: "",
+    });
+    await this.db.insert(invitationEvents).values({
+      id: randomUUID(), invitationId: inv.id,
+      akadDate: "", akadTime: "", akadVenue: "", akadMapsLink: "",
+      receptionDate: "", receptionTime: "", receptionVenue: "", receptionMapsLink: "",
+    });
+    await this.db.insert(invitationContent).values({
+      id: randomUUID(), invitationId: inv.id,
+      openingQuote: "", closingMessage: "", hashtag: "", livestreamLink: "",
+      backgroundMusic: "", enableRsvp: true, rsvpDeadline: "", maxGuests: 2,
+    });
     return inv;
   }
 
   async updateInvitation(id: string, data: Partial<Invitation>): Promise<Invitation | undefined> {
-    const [updated] = await this.db.update(invitations).set({ ...data, updatedAt: new Date() }).where(eq(invitations.id, id)).returning();
+    const [updated] = await this.db.update(invitations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(invitations.id, id))
+      .returning();
     return updated;
   }
 
@@ -231,7 +265,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMessagesByInvitation(invId: string): Promise<GuestMessage[]> {
-    return this.db.select().from(guestMessages).where(and(eq(guestMessages.invitationId, invId), eq(guestMessages.isVisible, true))).orderBy(desc(guestMessages.createdAt));
+    return this.db.select().from(guestMessages)
+      .where(and(eq(guestMessages.invitationId, invId), eq(guestMessages.isVisible, true)))
+      .orderBy(desc(guestMessages.createdAt));
   }
 
   async getAllMessagesByInvitation(invId: string): Promise<GuestMessage[]> {
@@ -261,12 +297,52 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGiftConfirmationsByInvitation(invId: string): Promise<GiftConfirmation[]> {
-    return this.db.select().from(giftConfirmations).where(eq(giftConfirmations.invitationId, invId)).orderBy(desc(giftConfirmations.createdAt));
+    return this.db.select().from(giftConfirmations)
+      .where(eq(giftConfirmations.invitationId, invId))
+      .orderBy(desc(giftConfirmations.createdAt));
   }
 
   async createGiftConfirmation(data: Omit<GiftConfirmation, "id" | "createdAt">): Promise<GiftConfirmation> {
     const [conf] = await this.db.insert(giftConfirmations).values({ ...data, id: randomUUID() }).returning();
     return conf;
+  }
+
+  async getSubscriptionByUser(userId: string): Promise<Subscription | undefined> {
+    const [sub] = await this.db.select().from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .orderBy(desc(subscriptions.createdAt));
+    return sub;
+  }
+
+  async createSubscription(data: InsertSubscription): Promise<Subscription> {
+    const [sub] = await this.db.insert(subscriptions).values({ ...data, id: randomUUID() }).returning();
+    return sub;
+  }
+
+  async updateSubscription(id: string, data: Partial<Subscription>): Promise<Subscription | undefined> {
+    const [updated] = await this.db.update(subscriptions)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(subscriptions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getWhiteLabelByUser(userId: string): Promise<WhiteLabelSettings | undefined> {
+    const [wl] = await this.db.select().from(whiteLabelSettings).where(eq(whiteLabelSettings.userId, userId));
+    return wl;
+  }
+
+  async upsertWhiteLabel(data: InsertWhiteLabel): Promise<WhiteLabelSettings> {
+    const existing = await this.getWhiteLabelByUser(data.userId);
+    if (existing) {
+      const [updated] = await this.db.update(whiteLabelSettings)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(whiteLabelSettings.userId, data.userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await this.db.insert(whiteLabelSettings).values({ ...data, id: randomUUID() }).returning();
+    return created;
   }
 
   async getUserStats(userId: string) {

@@ -36,7 +36,7 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - Countdown timer on public invitation page
 - Guest name personalization via `?to=GuestName` query param
 
-## Database Tables
+## Database Tables (13 total)
 - `users` - User accounts with plan (free/premium/business) — no RLS (used by auth)
 - `invitations` - Wedding invitations (slug, theme, status, views) — FORCE RLS
 - `invitation_couples` - Bride/groom info, love story, photos — FORCE RLS
@@ -47,6 +47,9 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `guest_messages` - Guest wishes/messages — FORCE RLS
 - `gift_accounts` - Bank/e-wallet accounts for digital gifting — FORCE RLS
 - `gift_confirmations` - Gift transfer confirmations — FORCE RLS
+- `subscriptions` - Subscription records per user (plan, status, payment ref, dates)
+- `white_label_settings` - Per-user white label config (brand name, logo, custom domain, hide watermark)
+- `session` - Express session store
 
 ## Row Level Security Architecture
 PostgreSQL RLS enforces that users only access their own data at the database level.
@@ -74,7 +77,8 @@ A Drizzle instance bound to that specific client is passed to `createStorage(use
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/me` - Get current user
 - `GET /api/invitations` - Get user's invitations
-- `POST /api/invitations` - Create invitation
+- `POST /api/invitations` - Create invitation (returns 201 + full Invitation object for redirect)
+- `GET /api/invitations/check-slug?slug=` - Check slug availability (returns {available: bool})
 - `GET/PATCH/DELETE /api/invitations/:id` - Manage specific invitation
 - `GET/PUT /api/invitations/:id/couple` - Couple info
 - `GET/PUT /api/invitations/:id/events` - Event details

@@ -125,6 +125,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // ── Invitation routes (RLS-scoped) ───────────────────────────────────────────
 
+  app.get("/api/invitations/check-slug", requireAuth, async (req, res) => {
+    const slug = String(req.query.slug || "").toLowerCase().trim();
+    const excludeId = req.query.excludeId ? String(req.query.excludeId) : undefined;
+    if (!slug) return res.status(400).json({ message: "slug required" });
+    const available = await storage.checkSlugAvailable(slug, excludeId);
+    res.json({ available });
+  });
+
   app.get("/api/invitations", requireAuth, async (req, res) => {
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
@@ -136,13 +144,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/invitations", requireAuth, async (req, res) => {
     try {
       const data = insertInvitationSchema.parse({ ...req.body, userId: userId(req) });
+      // Check slug availability before inserting
+      const slugAvailable = await storage.checkSlugAvailable(data.slug);
+      if (!slugAvailable) {
+        return res.status(400).json({ message: "URL undangan sudah dipakai, coba yang lain", field: "slug" });
+      }
       await withUserContext(userId(req), async (userDb) => {
         const s = createStorage(userDb);
         const inv = await s.createInvitation(data);
-        res.json(inv);
+        res.status(201).json(inv);
       });
     } catch (err: any) {
-      res.status(400).json({ message: err.message });
+      const msg = err.message || "Gagal membuat undangan";
+      const isDupSlug = msg.includes("unique") && msg.includes("slug");
+      res.status(400).json({ message: isDupSlug ? "URL undangan sudah dipakai, coba yang lain" : msg, field: isDupSlug ? "slug" : undefined });
     }
   });
 

@@ -8,6 +8,7 @@ export const statusEnum = pgEnum("invitation_status", ["draft", "published", "ar
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["pending", "attending", "not_attending"]);
 export const themeEnum = pgEnum("theme", ["classic_elegant", "minimal_modern", "romantic_floral", "luxury_gold"]);
 export const giftTypeEnum = pgEnum("gift_type", ["bank", "wallet"]);
+export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "cancelled", "expired"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -123,7 +124,33 @@ export const giftConfirmations = pgTable("gift_confirmations", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Insert schemas
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  plan: planEnum("plan").notNull().default("free"),
+  status: subscriptionStatusEnum("status").notNull().default("active"),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  endDate: timestamp("end_date"),
+  paymentRef: text("payment_ref"),
+  amount: integer("amount").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const whiteLabelSettings = pgTable("white_label_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  brandName: text("brand_name").notNull().default(""),
+  logoUrl: text("logo_url"),
+  primaryColor: text("primary_color").notNull().default("#e11d48"),
+  customDomain: text("custom_domain"),
+  hideWatermark: boolean("hide_watermark").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ── Insert schemas ───────────────────────────────────────────────────────────
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertInvitationSchema = createInsertSchema(invitations).omit({ id: true, createdAt: true, updatedAt: true, views: true });
 export const insertCoupleSchema = createInsertSchema(invitationCouples).omit({ id: true });
@@ -134,8 +161,11 @@ export const insertRsvpSchema = createInsertSchema(rsvps).omit({ id: true, creat
 export const insertGuestMessageSchema = createInsertSchema(guestMessages).omit({ id: true, createdAt: true });
 export const insertGiftAccountSchema = createInsertSchema(giftAccounts).omit({ id: true, createdAt: true });
 export const insertGiftConfirmationSchema = createInsertSchema(giftConfirmations).omit({ id: true, createdAt: true });
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWhiteLabelSchema = createInsertSchema(whiteLabelSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
-// Types
+// ── Types ────────────────────────────────────────────────────────────────────
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
@@ -151,6 +181,10 @@ export type InsertGuestMessage = z.infer<typeof insertGuestMessageSchema>;
 export type GiftAccount = typeof giftAccounts.$inferSelect;
 export type InsertGiftAccount = z.infer<typeof insertGiftAccountSchema>;
 export type GiftConfirmation = typeof giftConfirmations.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type WhiteLabelSettings = typeof whiteLabelSettings.$inferSelect;
+export type InsertWhiteLabel = z.infer<typeof insertWhiteLabelSchema>;
 
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;
