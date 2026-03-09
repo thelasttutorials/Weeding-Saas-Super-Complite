@@ -1,17 +1,17 @@
 # WedSaaS - Digital Wedding Invitation Platform
 
 ## Overview
-WedSaaS is a production-ready SaaS platform for digital wedding invitations. Users create beautiful wedding invitation websites, share links, manage RSVPs, receive guest messages, display digital gift accounts, gallery photos, and view analytics from a dashboard. Admins can monitor the entire platform.
+WedSaaS is a production-ready SaaS platform for digital wedding invitations. Users create beautiful wedding invitation websites, share links, manage RSVPs, receive guest messages, display digital gift accounts, gallery photos, and view analytics. Admins have a comprehensive panel to manage the entire platform including content, pricing, testimonials, FAQs, settings, SEO, and audit logs.
 
 ## Tech Stack
 - **Frontend**: React + TypeScript, Wouter routing, TanStack Query, Shadcn UI, Recharts
-- **Backend**: Express.js + TypeScript
+- **Backend**: Express.js v5 + TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Session-based (express-session + passport-local + bcrypt)
 
 ## Application Structure
 
-### Routes
+### User Routes
 - `/` - Marketing landing page
 - `/login` - Login page
 - `/register` - Register page
@@ -26,9 +26,18 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `/dashboard/analytics` - Analytics with charts
 - `/dashboard/subscription` - Subscription plans (payment gateway: coming soon)
 - `/dashboard/settings` - Account settings + password change
-- `/admin` - Admin platform overview stats
-- `/admin/users` - Admin: all users list with plan management
-- `/admin/invitations` - Admin: all invitations across platform
+
+### Admin Routes
+- `/admin` - Platform overview stats + recent users/invitations + quick actions
+- `/admin/users` - User management (plan, suspend/activate, toggle admin, reg date)
+- `/admin/invitations` - All invitations (publish/unpublish/archive, views count)
+- `/admin/testimonials` - Testimonials CRUD (publish/unpublish, star rating)
+- `/admin/faqs` - FAQ CRUD (category filter, sort order, active toggle)
+- `/admin/pricing` - Pricing plans CRUD + plan features management
+- `/admin/payments` - Subscription/payment list (read-only, search + filter)
+- `/admin/settings` - Website settings (General + System tabs)
+- `/admin/seo` - SEO settings (meta tags, OG, Twitter card, live preview)
+- `/admin/logs` - Audit log viewer (color-coded action badges, search + filter)
 
 ### Key Features (ALL ACTIVE WITH REAL DB)
 - Multi-tenant: each user can have many invitations (RLS enforced)
@@ -42,20 +51,33 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - Guest name personalization via `?to=GuestName` query param
 - Admin panel (role-based, isAdmin field on users)
 - Account settings with real profile save + password change
+- Admin testimonials/FAQ/pricing CRUD
+- Admin website settings & SEO settings stored in DB
+- Audit logging for all admin actions
 
-## Database Tables (13 total)
-- `users` - Accounts with plan (free/premium/business) + isAdmin boolean
-- `invitations` - Wedding invitations (slug, theme, status, views) — FORCE RLS
-- `invitation_couples` - Bride/groom info, love story, photos — FORCE RLS
-- `invitation_events` - Akad and reception event details — FORCE RLS
-- `invitation_content` - Opening quote, closing message, RSVP settings — FORCE RLS
-- `invitation_gallery` - Gallery images with URL + caption — FORCE RLS
-- `rsvps` - RSVP submissions — FORCE RLS
-- `guest_messages` - Guest wishes/messages — FORCE RLS
-- `gift_accounts` - Bank/e-wallet accounts for digital gifting — FORCE RLS
-- `gift_confirmations` - Gift transfer confirmations — FORCE RLS
+## Database Tables (20 total)
+### User/Invitation Tables (RLS enforced)
+- `users` - Accounts with plan (free/premium/business) + isAdmin + isSuspended
+- `invitations` - Wedding invitations (slug, theme, status, views)
+- `invitation_couples` - Bride/groom info, love story, photos
+- `invitation_events` - Akad and reception event details
+- `invitation_content` - Opening quote, closing message, RSVP settings
+- `invitation_gallery` - Gallery images with URL + caption
+- `rsvps` - RSVP submissions
+- `guest_messages` - Guest wishes/messages
+- `gift_accounts` - Bank/e-wallet accounts for digital gifting
+- `gift_confirmations` - Gift transfer confirmations
 - `subscriptions` - Subscription records per user
 - `white_label_settings` - Per-user white label config
+
+### Admin/Platform Tables
+- `testimonials` - Platform testimonials with rating, publish status
+- `faqs` - Platform FAQ with category, sort order, active status
+- `pricing_plans` - Subscription plan definitions
+- `pricing_plan_features` - Features per plan
+- `audit_logs` - Admin action audit trail (who did what when)
+- `website_settings` - Singleton platform settings (id=1)
+- `seo_settings` - Singleton SEO config (id=1)
 - `session` - Express session store
 
 ## Row Level Security Architecture
@@ -69,44 +91,60 @@ Sets `SET LOCAL app.current_user_id = '{userId}'` (transaction-scoped, safe with
 
 **Migration**: `migrations/001_row_level_security.sql` — idempotent, safe to re-run.
 
-## Demo Account
-- Username: `demo`
-- Password: `demo123`
-- Is Admin: `true` (can access /admin panel)
-- Demo invitation slug: `ahmad-dan-sari`
+## Demo Accounts
+- `demo` / `demo123` — Admin + Premium — invitation slug: `ahmad-dan-sari`
+- `admin` / `admin123` — Admin + Business
+- `user_free` / `user123` — Free plan user
+- `user_premium` / `user123` — Premium plan user
 
 ## Admin Access
-Set `is_admin = true` in the `users` table for any user to grant admin panel access.
-Non-admin users attempting /admin are redirected to /dashboard.
+Set `is_admin = true` in the `users` table. Non-admin users attempting /admin are redirected to /dashboard.
+Use `PATCH /api/admin/users/:id/toggle-admin` to toggle via UI.
+
+## Express v5 Note
+This project uses Express v5 with `@types/express` v5. Route params are typed as `string | string[]` — routes.ts has a `declare module "express-serve-static-core"` override to treat them as `string`.
 
 ## API Endpoints
-- `POST /api/auth/login` — Login
-- `POST /api/auth/register` — Register
-- `POST /api/auth/logout` — Logout
-- `GET /api/auth/me` — Current user (includes isAdmin)
-- `GET /api/invitations` — User's invitations (RLS scoped)
-- `POST /api/invitations` — Create invitation
-- `GET/PATCH/DELETE /api/invitations/:id` — Manage invitation
-- `GET/PUT /api/invitations/:id/couple` — Couple info
-- `GET/PUT /api/invitations/:id/events` — Event details
-- `GET/PUT /api/invitations/:id/content` — Content settings
-- `GET/POST /api/invitations/:id/gallery` — Gallery
-- `DELETE /api/invitations/:id/gallery/:imageId` — Delete photo
-- `GET /api/invitations/:id/rsvps` — RSVPs (dashboard)
-- `GET /api/invitations/:id/messages` — Messages (dashboard)
-- `PATCH /api/messages/:id/visibility` — Toggle message visibility
-- `GET/POST /api/invitations/:id/gifts` — Gift accounts
-- `DELETE /api/gifts/:id` — Delete gift account
-- `GET /api/invitations/:id/analytics` — Invitation analytics
-- `PATCH /api/users/me` — Update profile
-- `PATCH /api/users/me/password` — Change password
-- `GET /api/stats` — User-wide stats overview
-- `GET /api/admin/stats` — Platform stats (admin only)
-- `GET /api/admin/users` — All users (admin only)
-- `GET /api/admin/invitations` — All invitations (admin only)
-- `PATCH /api/admin/users/:id/plan` — Update user plan (admin only)
-- `GET /api/public/:slug` — Public invitation
-- `POST /api/public/:slug/rsvp` — Submit RSVP
-- `POST /api/public/:slug/messages` — Submit message
-- `GET /api/public/:slug/messages` — Visible messages
-- `POST /api/public/:slug/gift-confirmation` — Gift confirmation
+
+### Auth
+- `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+### Invitation Management (auth required, RLS scoped)
+- `GET/POST /api/invitations`
+- `GET/PATCH/DELETE /api/invitations/:id`
+- `POST /api/invitations/:id/publish`, `POST /api/invitations/:id/unpublish`
+- `GET/PUT /api/invitations/:id/couple`
+- `GET/PUT /api/invitations/:id/events`
+- `GET/PUT /api/invitations/:id/content`
+- `GET/POST /api/invitations/:id/gallery`, `DELETE /api/invitations/:id/gallery/:imageId`
+- `GET /api/invitations/:id/rsvps`, `GET /api/invitations/:id/messages`
+- `PATCH /api/messages/:id/visibility`
+- `GET/POST /api/invitations/:id/gifts`, `DELETE /api/gifts/:id`
+- `GET /api/invitations/:id/gift-confirmations`
+- `GET /api/invitations/:id/analytics`
+
+### User
+- `GET /api/stats`, `PATCH /api/users/me`, `PATCH /api/users/me/password`
+
+### Admin (requireAdmin middleware)
+- `GET /api/admin/stats` — includes recentUsers + recentInvitations
+- `GET /api/admin/users`, `PATCH /api/admin/users/:id/plan`
+- `PATCH /api/admin/users/:id/suspend`, `PATCH /api/admin/users/:id/unsuspend`
+- `PATCH /api/admin/users/:id/toggle-admin`
+- `GET /api/admin/users/:id/detail`
+- `GET /api/admin/invitations`
+- `POST /api/admin/invitations/:id/publish`, `/unpublish`, `/archive`
+- `GET/POST /api/admin/testimonials`, `PATCH/DELETE /api/admin/testimonials/:id`
+- `GET/POST /api/admin/faqs`, `PATCH/DELETE /api/admin/faqs/:id`
+- `GET/POST /api/admin/pricing`, `PATCH/DELETE /api/admin/pricing/:id`
+- `GET/PUT /api/admin/pricing/:id/features`
+- `GET /api/admin/subscriptions`
+- `GET/PUT /api/admin/settings/website`
+- `GET/PUT /api/admin/settings/seo`
+- `GET /api/admin/audit-logs`
+
+### Public (no auth)
+- `GET /api/public/:slug`, `POST /api/public/:slug/rsvp`
+- `POST /api/public/:slug/messages`, `GET /api/public/:slug/messages`
+- `POST /api/public/:slug/gift-confirmation`

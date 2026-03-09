@@ -1,0 +1,415 @@
+Sekarang lakukan redesign dan perbaikan UI/UX secara menyeluruh untuk project WedSaaS agar tampil jauh lebih premium, elegan, simpel, clean, dan responsif di semua perangkat.
+
+Perangkat yang harus diperhatikan:
+- Mobile phone
+- Tablet
+- Laptop
+- Desktop / layar besar
+
+Tujuan utama redesign:
+- tampilan SaaS modern
+- elegan dan profesional
+- tidak ramai
+- clean minimal
+- nyaman dibaca
+- konsisten
+- mobile-first responsive
+- mudah digunakan
+
+Jangan menambah fitur baru.
+Fokus pada peningkatan kualitas UI, layout, dan konsistensi visual.
+
+================================================
+1. GLOBAL LAYOUT IMPROVEMENT
+================================================
+
+Perbaiki layout seluruh website:
+
+- samakan container width
+- rapikan padding antar section
+- rapikan vertical spacing
+- perbaiki alignment
+- hilangkan area kosong yang aneh
+- pastikan semua section memiliki ritme yang konsisten
+
+Gunakan pendekatan:
+
+clean SaaS layout
+white space cukup
+tidak terlalu padat
+tidak terlalu kosong
+
+Pastikan layout terlihat bagus di:
+
+mobile
+tablet
+desktop
+ultra wide screen
+
+================================================
+2. NAVBAR / HEADER
+================================================
+
+Perbaiki navbar agar lebih premium.
+
+Perbaiki:
+- logo alignment
+- menu spacing
+- tombol CTA
+- ukuran font menu
+- hover state
+
+Tambahkan:
+
+sticky navbar halus
+mobile hamburger menu yang rapi
+dropdown jika perlu
+
+Mobile navbar harus:
+- mudah digunakan
+- tidak terlalu tinggi
+- menu mudah diklik
+
+================================================
+3. HERO SECTION
+================================================
+
+Perbaiki hero section:
+
+- hierarchy headline
+- subheadline
+- CTA utama
+- CTA sekunder
+- badge kecil di atas headline
+
+Pastikan:
+
+headline kuat
+subheadline mudah dibaca
+CTA jelas
+spacing elegan
+
+Hero harus terlihat:
+
+premium
+clean
+tidak penuh
+tidak terlalu kosong
+
+================================================
+4. FEATURES SECTION
+================================================
+
+Perbaiki card fitur.
+
+Setiap card harus:
+
+- icon area rapi
+- judul jelas
+- deskripsi mudah dibaca
+- padding konsisten
+- grid konsisten
+
+Hover effect harus subtle dan elegan.
+
+================================================
+5. HOW IT WORKS SECTION
+================================================
+
+Perbaiki section langkah penggunaan.
+
+Step harus:
+
+1. jelas
+2. mudah dipahami
+3. spacing seimbang
+4. icon konsisten
+5. nomor step terlihat rapi
+
+Mobile layout harus stack dengan baik.
+
+================================================
+6. THEME SHOWCASE
+================================================
+
+Perbaiki card preview tema.
+
+Setiap card:
+
+- ukuran sama
+- preview lebih menarik
+- title dan subtitle jelas
+- spacing konsisten
+
+Tambahkan hover halus.
+
+================================================
+7. PRICING SECTION
+================================================
+
+Perbaiki pricing agar terlihat lebih premium.
+
+Perbaiki:
+
+- card layout
+- spacing
+- typography
+- highlight plan populer
+- CTA button
+
+Pricing harus:
+
+mudah dibaca
+tidak ramai
+lebih meyakinkan
+
+Mobile version harus tetap nyaman.
+
+================================================
+8. TESTIMONIAL SECTION
+================================================
+
+Perbaiki card testimonial.
+
+Perbaiki:
+
+- quote text
+- nama user
+- avatar
+- spacing
+
+Card harus terlihat:
+
+clean
+trustworthy
+tidak penuh
+
+================================================
+9. FAQ SECTION
+================================================
+
+Perbaiki FAQ accordion.
+
+Pastikan:
+
+- spacing nyaman
+- typography jelas
+- toggle halus
+- tidak terlalu padat
+
+================================================
+10. CTA SECTION
+================================================
+
+Perbaiki CTA penutup.
+
+CTA harus:
+
+menonjol
+tidak berlebihan
+mudah diklik
+
+================================================
+11. FOOTER
+================================================
+
+Perbaiki footer layout.
+
+Tambahkan:
+
+- struktur link rapi
+- brand identity jelas
+- copyright lebih clean
+
+================================================
+12. RESPONSIVE DESIGN
+================================================
+
+Audit seluruh website agar benar-benar responsive.
+
+Periksa:
+
+mobile
+tablet
+laptop
+desktop
+
+Perbaiki:
+
+- card grid
+- text wrapping
+- button sizing
+- image scaling
+- section spacing
+- menu mobile
+
+Pastikan:
+
+tidak ada overflow
+tidak ada layout rusak
+tidak ada card pecah
+
+================================================
+13. DESIGN SYSTEM CONSISTENCY
+================================================
+
+Samakan seluruh komponen.
+
+Samakan style untuk:
+
+buttons
+cards
+inputs
+badges
+icons
+section titles
+form elements
+tables
+
+Gunakan sistem konsisten untuk:
+
+border radius
+shadow
+spacing scale
+font scale
+color hierarchy
+
+================================================
+14. ADMIN DASHBOARD UI
+================================================
+
+Sekarang perbaiki UI dashboard admin.
+
+Fokus:
+
+sidebar layout
+header dashboard
+card statistik
+form admin
+table admin
+filters
+empty states
+
+Dashboard harus terlihat seperti:
+
+modern SaaS admin
+clean
+professional
+mudah dipakai
+
+Perbaiki:
+
+- sidebar spacing
+- icon alignment
+- table readability
+- form layout
+- button placement
+
+================================================
+15. ADMIN CMS PANEL
+================================================
+
+Perbaiki halaman admin CMS:
+
+Hero settings
+Features
+Pricing
+Testimonials
+FAQ
+Footer
+SEO Settings
+Webmaster Tools
+Analytics
+
+Setiap halaman admin harus:
+
+form rapi
+label jelas
+input spacing konsisten
+save state jelas
+success message jelas
+error state jelas
+
+================================================
+16. MOBILE DASHBOARD
+================================================
+
+Dashboard admin juga harus usable di tablet dan mobile.
+
+Perbaiki:
+
+sidebar collapse
+table responsive
+form layout mobile
+button spacing
+
+================================================
+17. UX POLISH
+================================================
+
+Tambahkan polish UX:
+
+hover states
+focus states
+loading states
+success states
+error states
+
+Animasi harus:
+
+ringan
+halus
+tidak berlebihan
+
+================================================
+18. VISUAL CLEANUP
+================================================
+
+Hilangkan elemen yang membuat UI terasa berat.
+
+Kurangi:
+
+border berlebihan
+shadow berlebihan
+warna terlalu banyak
+icon tidak perlu
+
+Prioritaskan:
+
+clarity
+simplicity
+elegance
+
+================================================
+19. PERFORMANCE FRIENDLY UI
+================================================
+
+Pastikan UI tidak membuat website berat.
+
+Optimasi:
+
+gambar
+layout shift
+komponen client
+
+Gunakan:
+
+Next.js Image
+lazy loading
+struktur ringan
+
+================================================
+OUTPUT YANG DIINGINKAN
+================================================
+
+Setelah redesign selesai tampilkan:
+
+1. daftar file yang diubah
+2. bagian UI yang diperbaiki
+3. bagian admin dashboard yang diperbaiki
+4. perbaikan responsive
+5. komponen yang dirapikan
+6. kode final
+
+Tujuan akhir:
+UI WedSaaS terlihat seperti produk SaaS premium yang elegan, clean, modern, dan sangat responsif di semua perangkat.

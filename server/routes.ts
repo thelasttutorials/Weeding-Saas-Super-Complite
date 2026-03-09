@@ -1,8 +1,19 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+
+// Express v5 changed ParamsDictionary to string | string[] — override to string for convenience
+declare module "express-serve-static-core" {
+  interface ParamsDictionary {
+    [key: string]: string;
+  }
+}
 import { storage, createStorage } from "./storage";
 import { withUserContext } from "./db";
-import { insertUserSchema, insertInvitationSchema, insertRsvpSchema, insertGuestMessageSchema, insertGiftAccountSchema } from "@shared/schema";
+import {
+  insertUserSchema, insertInvitationSchema, insertRsvpSchema, insertGuestMessageSchema, insertGiftAccountSchema,
+  insertTestimonialSchema, insertFaqSchema, insertPricingPlanSchema, insertWebsiteSettingsSchema, insertSeoSettingsSchema,
+  insertPricingPlanFeatureSchema
+} from "@shared/schema";
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -461,7 +472,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── Admin routes ─────────────────────────────────────────────────────────────
 
   app.get("/api/admin/stats", requireAdmin, async (req, res) => {
-    res.json(await storage.getPlatformStats());
+    const stats = await storage.getPlatformStats();
+    const recentUsers = await storage.getAllUsers();
+    const recentInvitations = await storage.getAllInvitations();
+    res.json({
+      ...stats,
+      recentUsers: recentUsers.slice(0, 5),
+      recentInvitations: recentInvitations.slice(0, 5),
+    });
   });
 
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
@@ -475,8 +493,312 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.patch("/api/admin/users/:id/plan", requireAdmin, async (req, res) => {
     const updated = await storage.updateUser(req.params.id, { plan: req.body.plan });
     if (!updated) return res.status(404).json({ message: "User not found" });
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "update",
+      entity: "user",
+      entityId: req.params.id,
+      description: `Changed user ${updated.username} plan to ${req.body.plan}`,
+    });
     const { password: _, ...safe } = updated;
     res.json(safe);
+  });
+
+  // ── Admin Testimonials ───────────────────────────────────────────────────
+
+  app.get("/api/admin/testimonials", requireAdmin, async (req, res) => {
+    res.json(await storage.getTestimonials());
+  });
+
+  app.post("/api/admin/testimonials", requireAdmin, async (req, res) => {
+    try {
+      const data = insertTestimonialSchema.parse(req.body);
+      const testimonial = await storage.createTestimonial(data);
+      await storage.createAuditLog({
+        adminId: userId(req),
+        action: "create",
+        entity: "testimonial",
+        entityId: testimonial.id,
+        description: `Created testimonial for ${testimonial.coupleName}`,
+      });
+      res.status(201).json(testimonial);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/admin/testimonials/:id", requireAdmin, async (req, res) => {
+    const updated = await storage.updateTestimonial(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: "Testimonial not found" });
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "update",
+      entity: "testimonial",
+      entityId: req.params.id,
+      description: `Updated testimonial for ${updated.coupleName}`,
+    });
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/testimonials/:id", requireAdmin, async (req, res) => {
+    await storage.deleteTestimonial(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "delete",
+      entity: "testimonial",
+      entityId: req.params.id,
+      description: `Deleted testimonial ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  // ── Admin FAQ ────────────────────────────────────────────────────────────
+
+  app.get("/api/admin/faqs", requireAdmin, async (req, res) => {
+    res.json(await storage.getFaqs());
+  });
+
+  app.post("/api/admin/faqs", requireAdmin, async (req, res) => {
+    try {
+      const data = insertFaqSchema.parse(req.body);
+      const faq = await storage.createFaq(data);
+      await storage.createAuditLog({
+        adminId: userId(req),
+        action: "create",
+        entity: "faq",
+        entityId: faq.id,
+        description: `Created FAQ: ${faq.question}`,
+      });
+      res.status(201).json(faq);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/admin/faqs/:id", requireAdmin, async (req, res) => {
+    const updated = await storage.updateFaq(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: "FAQ not found" });
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "update",
+      entity: "faq",
+      entityId: req.params.id,
+      description: `Updated FAQ: ${updated.question}`,
+    });
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/faqs/:id", requireAdmin, async (req, res) => {
+    await storage.deleteFaq(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "delete",
+      entity: "faq",
+      entityId: req.params.id,
+      description: `Deleted FAQ ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  // ── Admin Pricing ─────────────────────────────────────────────────────────
+
+  app.get("/api/admin/pricing", requireAdmin, async (req, res) => {
+    res.json(await storage.getPricingPlans());
+  });
+
+  app.post("/api/admin/pricing", requireAdmin, async (req, res) => {
+    try {
+      const data = insertPricingPlanSchema.parse(req.body);
+      const plan = await storage.createPricingPlan(data);
+      await storage.createAuditLog({
+        adminId: userId(req),
+        action: "create",
+        entity: "pricing_plan",
+        entityId: plan.id,
+        description: `Created pricing plan: ${plan.name}`,
+      });
+      res.status(201).json(plan);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/admin/pricing/:id", requireAdmin, async (req, res) => {
+    const updated = await storage.updatePricingPlan(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ message: "Pricing plan not found" });
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "update",
+      entity: "pricing_plan",
+      entityId: req.params.id,
+      description: `Updated pricing plan: ${updated.name}`,
+    });
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/pricing/:id", requireAdmin, async (req, res) => {
+    await storage.deletePricingPlan(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "delete",
+      entity: "pricing_plan",
+      entityId: req.params.id,
+      description: `Deleted pricing plan ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/pricing/:id/features", requireAdmin, async (req, res) => {
+    res.json(await storage.getPricingPlanFeatures(req.params.id));
+  });
+
+  app.put("/api/admin/pricing/:id/features", requireAdmin, async (req, res) => {
+    await storage.upsertPricingPlanFeatures(req.params.id, req.body);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "update",
+      entity: "pricing_plan_features",
+      entityId: req.params.id,
+      description: `Updated features for plan ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  // ── Admin Audit Logs ─────────────────────────────────────────────────────
+
+  app.get("/api/admin/audit-logs", requireAdmin, async (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+    res.json(await storage.getAuditLogs(limit));
+  });
+
+  // ── Admin Settings ────────────────────────────────────────────────────────
+
+  app.get("/api/admin/settings/website", requireAdmin, async (req, res) => {
+    res.json(await storage.getWebsiteSettings());
+  });
+
+  app.put("/api/admin/settings/website", requireAdmin, async (req, res) => {
+    try {
+      const data = insertWebsiteSettingsSchema.parse(req.body);
+      const settings = await storage.updateWebsiteSettings(data);
+      await storage.createAuditLog({
+        adminId: userId(req),
+        action: "update",
+        entity: "website_settings",
+        entityId: "1",
+        description: "Updated website settings",
+      });
+      res.json(settings);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/admin/settings/seo", requireAdmin, async (req, res) => {
+    res.json(await storage.getSeoSettings());
+  });
+
+  app.put("/api/admin/settings/seo", requireAdmin, async (req, res) => {
+    try {
+      const data = insertSeoSettingsSchema.parse(req.body);
+      const settings = await storage.updateSeoSettings(data);
+      await storage.createAuditLog({
+        adminId: userId(req),
+        action: "update",
+        entity: "seo_settings",
+        entityId: "1",
+        description: "Updated SEO settings",
+      });
+      res.json(settings);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ── Admin Users Management ────────────────────────────────────────────────
+
+  app.patch("/api/admin/users/:id/suspend", requireAdmin, async (req, res) => {
+    await storage.suspendUser(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "suspend",
+      entity: "user",
+      entityId: req.params.id,
+      description: `Suspended user ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  app.patch("/api/admin/users/:id/unsuspend", requireAdmin, async (req, res) => {
+    await storage.unsuspendUser(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "unsuspend",
+      entity: "user",
+      entityId: req.params.id,
+      description: `Unsuspended user ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  app.patch("/api/admin/users/:id/toggle-admin", requireAdmin, async (req, res) => {
+    await storage.toggleAdminStatus(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "toggle-admin",
+      entity: "user",
+      entityId: req.params.id,
+      description: `Toggled admin status for user ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/users/:id/detail", requireAdmin, async (req, res) => {
+    const detail = await storage.getAdminUserDetail(req.params.id);
+    if (!detail) return res.status(404).json({ message: "User not found" });
+    res.json(detail);
+  });
+
+  app.get("/api/admin/subscriptions", requireAdmin, async (req, res) => {
+    res.json(await storage.getAdminSubscriptions());
+  });
+
+  // ── Admin Invitations Management ──────────────────────────────────────────
+
+  app.post("/api/admin/invitations/:id/publish", requireAdmin, async (req, res) => {
+    await storage.adminPublishInvitation(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "publish",
+      entity: "invitation",
+      entityId: req.params.id,
+      description: `Published invitation ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/invitations/:id/unpublish", requireAdmin, async (req, res) => {
+    await storage.adminUnpublishInvitation(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "unpublish",
+      entity: "invitation",
+      entityId: req.params.id,
+      description: `Unpublished invitation ${req.params.id}`,
+    });
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/invitations/:id/archive", requireAdmin, async (req, res) => {
+    await storage.adminArchiveInvitation(req.params.id);
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "archive",
+      entity: "invitation",
+      entityId: req.params.id,
+      description: `Archived invitation ${req.params.id}`,
+    });
+    res.json({ success: true });
   });
 
   // ── Public invitation routes (no auth, RLS allows published data) ────────────

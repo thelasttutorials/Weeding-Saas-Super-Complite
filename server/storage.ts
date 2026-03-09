@@ -4,6 +4,8 @@ import {
   users, invitations, invitationCouples, invitationEvents,
   invitationContent, invitationGallery, rsvps, guestMessages,
   giftAccounts, giftConfirmations, subscriptions, whiteLabelSettings,
+  testimonials, faqs, pricingPlans, pricingPlanFeatures, auditLogs,
+  websiteSettings, seoSettings,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
@@ -11,6 +13,12 @@ import {
   type GiftConfirmation, type FullInvitation,
   type Subscription, type InsertSubscription,
   type WhiteLabelSettings, type InsertWhiteLabel,
+  type Testimonial, type InsertTestimonial,
+  type Faq, type InsertFaq,
+  type PricingPlan, type InsertPricingPlan,
+  type PricingPlanFeature, type InsertPricingPlanFeature,
+  type AuditLog, type InsertAuditLog,
+  type WebsiteSettings, type SeoSettings,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -89,6 +97,45 @@ export interface IStorage {
   }>;
 
   // Admin
+  getTestimonials(): Promise<Testimonial[]>;
+  createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
+  updateTestimonial(id: string, data: Partial<Testimonial>): Promise<Testimonial | undefined>;
+  deleteTestimonial(id: string): Promise<void>;
+
+  getFaqs(): Promise<Faq[]>;
+  createFaq(data: InsertFaq): Promise<Faq>;
+  updateFaq(id: string, data: Partial<Faq>): Promise<Faq | undefined>;
+  deleteFaq(id: string): Promise<void>;
+
+  getPricingPlans(): Promise<PricingPlan[]>;
+  createPricingPlan(data: InsertPricingPlan): Promise<PricingPlan>;
+  updatePricingPlan(id: string, data: Partial<PricingPlan>): Promise<PricingPlan | undefined>;
+  deletePricingPlan(id: string): Promise<void>;
+
+  getPricingPlanFeatures(planId: string): Promise<PricingPlanFeature[]>;
+  upsertPricingPlanFeatures(planId: string, features: Omit<PricingPlanFeature, "id" | "planId">[]): Promise<void>;
+
+  createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(limit?: number): Promise<(AuditLog & { adminUsername: string })[]>;
+
+  getWebsiteSettings(): Promise<WebsiteSettings>;
+  updateWebsiteSettings(data: Partial<WebsiteSettings>): Promise<WebsiteSettings>;
+
+  getSeoSettings(): Promise<SeoSettings>;
+  updateSeoSettings(data: Partial<SeoSettings>): Promise<SeoSettings>;
+
+  suspendUser(id: string): Promise<void>;
+  unsuspendUser(id: string): Promise<void>;
+  toggleAdminStatus(id: string): Promise<void>;
+
+  getAdminSubscriptions(): Promise<(Subscription & { username: string, email: string })[]>;
+
+  adminPublishInvitation(id: string): Promise<void>;
+  adminUnpublishInvitation(id: string): Promise<void>;
+  adminArchiveInvitation(id: string): Promise<void>;
+
+  getAdminUserDetail(id: string): Promise<{ user: User; invitations: Invitation[] } | undefined>;
+
   getAllUsers(): Promise<Omit<User, "password">[]>;
   getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
   getPlatformStats(): Promise<{
@@ -98,6 +145,8 @@ export interface IStorage {
     totalMessages: number;
     totalGiftConfirmations: number;
     publishedInvitations: number;
+    totalTestimonials: number;
+    totalFaqs: number;
   }>;
 }
 
@@ -381,6 +430,181 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // ── Admin implementation ───────────────────────────────────────────────────
+
+  async getTestimonials(): Promise<Testimonial[]> {
+    return this.db.select().from(testimonials).orderBy(desc(testimonials.sortOrder), desc(testimonials.createdAt));
+  }
+
+  async createTestimonial(data: InsertTestimonial): Promise<Testimonial> {
+    const [res] = await this.db.insert(testimonials).values({ ...data, id: randomUUID() }).returning();
+    return res;
+  }
+
+  async updateTestimonial(id: string, data: Partial<Testimonial>): Promise<Testimonial | undefined> {
+    const [res] = await this.db.update(testimonials).set(data).where(eq(testimonials.id, id)).returning();
+    return res;
+  }
+
+  async deleteTestimonial(id: string): Promise<void> {
+    await this.db.delete(testimonials).where(eq(testimonials.id, id));
+  }
+
+  async getFaqs(): Promise<Faq[]> {
+    return this.db.select().from(faqs).orderBy(desc(faqs.sortOrder), desc(faqs.createdAt));
+  }
+
+  async createFaq(data: InsertFaq): Promise<Faq> {
+    const [res] = await this.db.insert(faqs).values({ ...data, id: randomUUID() }).returning();
+    return res;
+  }
+
+  async updateFaq(id: string, data: Partial<Faq>): Promise<Faq | undefined> {
+    const [res] = await this.db.update(faqs).set(data).where(eq(faqs.id, id)).returning();
+    return res;
+  }
+
+  async deleteFaq(id: string): Promise<void> {
+    await this.db.delete(faqs).where(eq(faqs.id, id));
+  }
+
+  async getPricingPlans(): Promise<PricingPlan[]> {
+    return this.db.select().from(pricingPlans).orderBy(desc(pricingPlans.sortOrder), desc(pricingPlans.createdAt));
+  }
+
+  async createPricingPlan(data: InsertPricingPlan): Promise<PricingPlan> {
+    const [res] = await this.db.insert(pricingPlans).values({ ...data, id: randomUUID() }).returning();
+    return res;
+  }
+
+  async updatePricingPlan(id: string, data: Partial<PricingPlan>): Promise<PricingPlan | undefined> {
+    const [res] = await this.db.update(pricingPlans).set(data).where(eq(pricingPlans.id, id)).returning();
+    return res;
+  }
+
+  async deletePricingPlan(id: string): Promise<void> {
+    await this.db.delete(pricingPlans).where(eq(pricingPlans.id, id));
+  }
+
+  async getPricingPlanFeatures(planId: string): Promise<PricingPlanFeature[]> {
+    return this.db.select().from(pricingPlanFeatures).where(eq(pricingPlanFeatures.planId, planId)).orderBy(pricingPlanFeatures.sortOrder);
+  }
+
+  async upsertPricingPlanFeatures(planId: string, features: Omit<PricingPlanFeature, "id" | "planId">[]): Promise<void> {
+    await this.db.delete(pricingPlanFeatures).where(eq(pricingPlanFeatures.planId, planId));
+    if (features.length > 0) {
+      await this.db.insert(pricingPlanFeatures).values(
+        features.map(f => ({ ...f, id: randomUUID(), planId }))
+      );
+    }
+  }
+
+  async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
+    const [res] = await this.db.insert(auditLogs).values({ ...data, id: randomUUID() }).returning();
+    return res;
+  }
+
+  async getAuditLogs(limit: number = 100): Promise<(AuditLog & { adminUsername: string })[]> {
+    const res = await this.db
+      .select({
+        id: auditLogs.id,
+        adminId: auditLogs.adminId,
+        action: auditLogs.action,
+        entity: auditLogs.entity,
+        entityId: auditLogs.entityId,
+        description: auditLogs.description,
+        createdAt: auditLogs.createdAt,
+        adminUsername: users.username,
+      })
+      .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.adminId, users.id))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
+    return res.map(r => ({ ...r, adminUsername: r.adminUsername || "system" }));
+  }
+
+  async getWebsiteSettings(): Promise<WebsiteSettings> {
+    let [settings] = await this.db.select().from(websiteSettings).where(eq(websiteSettings.id, 1));
+    if (!settings) {
+      [settings] = await this.db.insert(websiteSettings).values({ id: 1 }).returning();
+    }
+    return settings;
+  }
+
+  async updateWebsiteSettings(data: Partial<WebsiteSettings>): Promise<WebsiteSettings> {
+    const [updated] = await this.db.update(websiteSettings).set({ ...data, updatedAt: new Date() }).where(eq(websiteSettings.id, 1)).returning();
+    return updated;
+  }
+
+  async getSeoSettings(): Promise<SeoSettings> {
+    let [settings] = await this.db.select().from(seoSettings).where(eq(seoSettings.id, 1));
+    if (!settings) {
+      [settings] = await this.db.insert(seoSettings).values({ id: 1 }).returning();
+    }
+    return settings;
+  }
+
+  async updateSeoSettings(data: Partial<SeoSettings>): Promise<SeoSettings> {
+    const [updated] = await this.db.update(seoSettings).set({ ...data, updatedAt: new Date() }).where(eq(seoSettings.id, 1)).returning();
+    return updated;
+  }
+
+  async suspendUser(id: string): Promise<void> {
+    await this.db.update(users).set({ isSuspended: true }).where(eq(users.id, id));
+  }
+
+  async unsuspendUser(id: string): Promise<void> {
+    await this.db.update(users).set({ isSuspended: false }).where(eq(users.id, id));
+  }
+
+  async toggleAdminStatus(id: string): Promise<void> {
+    const user = await this.getUser(id);
+    if (user) {
+      await this.db.update(users).set({ isAdmin: !user.isAdmin }).where(eq(users.id, id));
+    }
+  }
+
+  async getAdminSubscriptions(): Promise<(Subscription & { username: string, email: string })[]> {
+    const res = await this.db
+      .select({
+        id: subscriptions.id,
+        userId: subscriptions.userId,
+        plan: subscriptions.plan,
+        status: subscriptions.status,
+        startDate: subscriptions.startDate,
+        endDate: subscriptions.endDate,
+        paymentRef: subscriptions.paymentRef,
+        amount: subscriptions.amount,
+        createdAt: subscriptions.createdAt,
+        updatedAt: subscriptions.updatedAt,
+        username: users.username,
+        email: users.email,
+      })
+      .from(subscriptions)
+      .leftJoin(users, eq(subscriptions.userId, users.id))
+      .orderBy(desc(subscriptions.createdAt));
+    return res.map(r => ({ ...r, username: r.username || "unknown", email: r.email || "unknown" }));
+  }
+
+  async adminPublishInvitation(id: string): Promise<void> {
+    await this.db.update(invitations).set({ status: "published", publishedAt: new Date() }).where(eq(invitations.id, id));
+  }
+
+  async adminUnpublishInvitation(id: string): Promise<void> {
+    await this.db.update(invitations).set({ status: "draft", publishedAt: null }).where(eq(invitations.id, id));
+  }
+
+  async adminArchiveInvitation(id: string): Promise<void> {
+    await this.db.update(invitations).set({ status: "archived" }).where(eq(invitations.id, id));
+  }
+
+  async getAdminUserDetail(id: string): Promise<{ user: User; invitations: Invitation[] } | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+    const invList = await this.getInvitationsByUser(id);
+    return { user, invitations: invList };
+  }
+
   async getAllUsers(): Promise<Omit<User, "password">[]> {
     const result = await this.db.select({
       id: users.id,
@@ -390,6 +614,7 @@ export class DatabaseStorage implements IStorage {
       avatarUrl: users.avatarUrl,
       plan: users.plan,
       isAdmin: users.isAdmin,
+      isSuspended: users.isSuspended,
       createdAt: users.createdAt,
     }).from(users).orderBy(desc(users.createdAt));
     return result;
@@ -405,6 +630,7 @@ export class DatabaseStorage implements IStorage {
         theme: invitations.theme,
         status: invitations.status,
         coverImage: invitations.coverImage,
+        giftAddress: invitations.giftAddress,
         views: invitations.views,
         publishedAt: invitations.publishedAt,
         createdAt: invitations.createdAt,
@@ -424,6 +650,8 @@ export class DatabaseStorage implements IStorage {
     const [rCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(rsvps);
     const [mCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(guestMessages);
     const [gCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(giftConfirmations);
+    const [tCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(testimonials);
+    const [fCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(faqs);
     return {
       totalUsers: uCount.count,
       totalInvitations: iCount.count,
@@ -431,6 +659,8 @@ export class DatabaseStorage implements IStorage {
       totalRsvp: rCount.count,
       totalMessages: mCount.count,
       totalGiftConfirmations: gCount.count,
+      totalTestimonials: tCount.count,
+      totalFaqs: fCount.count,
     };
   }
 }

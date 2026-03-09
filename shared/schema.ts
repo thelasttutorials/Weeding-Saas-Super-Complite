@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, pgEnum, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ export const rsvpStatusEnum = pgEnum("rsvp_status", ["pending", "attending", "no
 export const themeEnum = pgEnum("theme", ["classic_elegant", "minimal_modern", "romantic_floral", "luxury_gold"]);
 export const giftTypeEnum = pgEnum("gift_type", ["bank", "wallet"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "cancelled", "expired"]);
+export const billingTypeEnum = pgEnum("billing_type", ["one_time", "monthly", "yearly"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -19,6 +20,7 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   plan: planEnum("plan").notNull().default("free"),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isSuspended: boolean("is_suspended").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -151,6 +153,99 @@ export const whiteLabelSettings = pgTable("white_label_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ── New admin tables ──────────────────────────────────────────────────────────
+
+export const testimonials = pgTable("testimonials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coupleName: text("couple_name").notNull(),
+  avatarInitials: text("avatar_initials").notNull().default(""),
+  testimonialText: text("testimonial_text").notNull(),
+  rating: integer("rating").notNull().default(5),
+  weddingDateLabel: text("wedding_date_label").notNull().default(""),
+  photo: text("photo"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isPublished: boolean("is_published").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const faqs = pgTable("faqs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  category: text("category").notNull().default("umum"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const pricingPlans = pgTable("pricing_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  shortDescription: text("short_description").notNull().default(""),
+  price: integer("price").notNull().default(0),
+  billingType: billingTypeEnum("billing_type").notNull().default("monthly"),
+  priceLabel: text("price_label").notNull().default(""),
+  badgeText: text("badge_text").notNull().default(""),
+  highlightColor: text("highlight_color").notNull().default("#e11d48"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  isPopular: boolean("is_popular").notNull().default(false),
+  ctaText: text("cta_text").notNull().default("Pilih Paket"),
+  ctaLink: text("cta_link").notNull().default("/register"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const pricingPlanFeatures = pgTable("pricing_plan_features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planId: varchar("plan_id").notNull().references(() => pricingPlans.id, { onDelete: "cascade" }),
+  featureName: text("feature_name").notNull(),
+  included: boolean("included").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").references(() => users.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  entity: text("entity").notNull().default(""),
+  entityId: text("entity_id").notNull().default(""),
+  description: text("description").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const websiteSettings = pgTable("website_settings", {
+  id: serial("id").primaryKey(),
+  siteName: text("site_name").notNull().default("WedSaaS"),
+  tagline: text("tagline").notNull().default("Platform Undangan Pernikahan Digital"),
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  supportEmail: text("support_email").notNull().default(""),
+  supportWhatsapp: text("support_whatsapp").notNull().default(""),
+  businessAddress: text("business_address").notNull().default(""),
+  primaryColor: text("primary_color").notNull().default("#e11d48"),
+  secondaryColor: text("secondary_color").notNull().default("#f43f5e"),
+  maintenanceMode: boolean("maintenance_mode").notNull().default(false),
+  registrationEnabled: boolean("registration_enabled").notNull().default(true),
+  trialEnabled: boolean("trial_enabled").notNull().default(false),
+  privacyPolicyUrl: text("privacy_policy_url").notNull().default(""),
+  termsUrl: text("terms_url").notNull().default(""),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const seoSettings = pgTable("seo_settings", {
+  id: serial("id").primaryKey(),
+  homepageMetaTitle: text("homepage_meta_title").notNull().default("WedSaaS — Undangan Pernikahan Digital"),
+  homepageMetaDescription: text("homepage_meta_description").notNull().default(""),
+  homepageMetaKeywords: text("homepage_meta_keywords").notNull().default(""),
+  ogTitle: text("og_title").notNull().default(""),
+  ogDescription: text("og_description").notNull().default(""),
+  ogImageUrl: text("og_image_url"),
+  twitterCard: text("twitter_card").notNull().default("summary_large_image"),
+  canonicalUrl: text("canonical_url").notNull().default(""),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ── Insert schemas ───────────────────────────────────────────────────────────
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -165,6 +260,14 @@ export const insertGiftAccountSchema = createInsertSchema(giftAccounts).omit({ i
 export const insertGiftConfirmationSchema = createInsertSchema(giftConfirmations).omit({ id: true, createdAt: true });
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWhiteLabelSchema = createInsertSchema(whiteLabelSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
+export const insertFaqSchema = createInsertSchema(faqs).omit({ id: true, createdAt: true });
+export const insertPricingPlanSchema = createInsertSchema(pricingPlans).omit({ id: true, createdAt: true });
+export const insertPricingPlanFeatureSchema = createInsertSchema(pricingPlanFeatures).omit({ id: true });
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export const insertWebsiteSettingsSchema = createInsertSchema(websiteSettings).omit({ id: true, updatedAt: true });
+export const insertSeoSettingsSchema = createInsertSchema(seoSettings).omit({ id: true, updatedAt: true });
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -187,6 +290,18 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type WhiteLabelSettings = typeof whiteLabelSettings.$inferSelect;
 export type InsertWhiteLabel = z.infer<typeof insertWhiteLabelSchema>;
+
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+export type Faq = typeof faqs.$inferSelect;
+export type InsertFaq = z.infer<typeof insertFaqSchema>;
+export type PricingPlan = typeof pricingPlans.$inferSelect;
+export type InsertPricingPlan = z.infer<typeof insertPricingPlanSchema>;
+export type PricingPlanFeature = typeof pricingPlanFeatures.$inferSelect;
+export type InsertPricingPlanFeature = z.infer<typeof insertPricingPlanFeatureSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type WebsiteSettings = typeof websiteSettings.$inferSelect;
+export type SeoSettings = typeof seoSettings.$inferSelect;
 
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;

@@ -6,9 +6,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Crown, Users } from "lucide-react";
+import { Search, Crown, Users, Shield, ShieldOff, UserX, UserCheck } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
+import { id as localeId } from "date-fns/locale";
 
 interface AdminUser {
   id: string;
@@ -17,6 +31,7 @@ interface AdminUser {
   email: string;
   plan: string;
   isAdmin: boolean;
+  isSuspended: boolean;
   createdAt: string;
 }
 
@@ -36,6 +51,26 @@ export default function AdminUsers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: "Plan diperbarui!" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleSuspendMutation = useMutation({
+    mutationFn: ({ userId, suspend }: { userId: string; suspend: boolean }) =>
+      apiRequest("PATCH", `/api/admin/users/${userId}/${suspend ? 'suspend' : 'unsuspend'}`, {}),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: variables.suspend ? "User disuspensi!" : "User diaktifkan kembali!" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const toggleAdminMutation = useMutation({
+    mutationFn: ({ userId }: { userId: string }) =>
+      apiRequest("PATCH", `/api/admin/users/${userId}/toggle-admin`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Status admin diperbarui!" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -102,7 +137,7 @@ export default function AdminUsers() {
       ) : (
         <div className="space-y-2">
           {filtered.map((user) => (
-            <Card key={user.id} className="border border-card-border" data-testid={`admin-user-row-${user.id}`}>
+            <Card key={user.id} className={`border border-card-border ${user.isSuspended ? 'opacity-60 bg-muted/30' : ''}`} data-testid={`admin-user-row-${user.id}`}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-9 h-9 shrink-0">
@@ -116,16 +151,24 @@ export default function AdminUsers() {
                       {user.isAdmin && (
                         <Badge variant="outline" className="text-xs text-violet-600 border-violet-300">Admin</Badge>
                       )}
+                      {user.isSuspended && (
+                        <Badge variant="destructive" className="text-xs">Suspended</Badge>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">@{user.username} · {user.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      @{user.username} · {user.email}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Terdaftar: {format(new Date(user.createdAt), "dd MMM yyyy", { locale: localeId })}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {planBadge(user.plan)}
                     <Select
                       value={user.plan}
                       onValueChange={(newPlan) => updatePlanMutation.mutate({ userId: user.id, plan: newPlan })}
                     >
-                      <SelectTrigger className="w-28 h-7 text-xs" data-testid={`admin-select-user-plan-${user.id}`}>
+                      <SelectTrigger className="w-24 h-8 text-xs" data-testid={`admin-select-user-plan-${user.id}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -134,6 +177,45 @@ export default function AdminUsers() {
                         <SelectItem value="business">Business</SelectItem>
                       </SelectContent>
                     </Select>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          title={user.isAdmin ? "Hapus Admin" : "Jadikan Admin"}
+                          data-testid={`admin-button-toggle-admin-${user.id}`}
+                        >
+                          {user.isAdmin ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Konfirmasi Status Admin</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Apakah Anda yakin ingin {user.isAdmin ? "menghapus akses admin dari" : "menjadikan admin"} user <strong>{user.username}</strong>?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => toggleAdminMutation.mutate({ userId: user.id })}>
+                            Ya, Lanjutkan
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className={`h-8 w-8 ${user.isSuspended ? 'text-emerald-600 hover:text-emerald-700' : 'text-destructive hover:text-destructive'}`}
+                      title={user.isSuspended ? "Aktifkan User" : "Suspensi User"}
+                      onClick={() => toggleSuspendMutation.mutate({ userId: user.id, suspend: !user.isSuspended })}
+                      data-testid={`admin-button-toggle-suspend-${user.id}`}
+                    >
+                      {user.isSuspended ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
+                    </Button>
                   </div>
                 </div>
               </CardContent>

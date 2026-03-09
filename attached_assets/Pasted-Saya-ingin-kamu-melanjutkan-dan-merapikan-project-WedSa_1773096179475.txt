@@ -1,0 +1,596 @@
+Saya ingin kamu melanjutkan dan merapikan project WedSaaS yang sudah ada, bukan membuat ulang dari nol.
+
+Tujuan utama:
+1. membuat project ini benar-benar siap publish/deploy
+2. memperbaiki fitur yang masih dummy atau belum aktif
+3. menambahkan fitur admin untuk membuat dan mengelola tema wedding secara visual dengan drag & drop builder seperti Elementor/Divi versi MVP
+4. memastikan UI lebih elegan, clean, simpel, dan responsif di mobile, tablet, laptop, dan desktop
+
+PENTING:
+- gunakan codebase yang sudah ada
+- refactor seperlunya, jangan hancurkan struktur yang sudah berjalan
+- prioritaskan fitur yang benar-benar usable
+- jangan hanya membuat UI kosong
+- semua fitur utama harus punya data flow nyata
+- jika ada fitur yang belum bisa dibuat penuh, buat MVP yang rapi dan jujur
+
+==================================================
+BAGIAN 1 — AUDIT PROJECT YANG SUDAH ADA
+==================================================
+
+Pertama, audit seluruh project dan identifikasi:
+
+- fitur yang masih UI only
+- fitur yang masih dummy/local state
+- fitur yang sudah terhubung ke Supabase
+- bagian yang membuat project belum siap publish
+- bagian yang menyebabkan UX/admin terasa belum matang
+- bagian yang masih hardcoded
+- halaman yang belum responsive sempurna
+
+Tampilkan hasil audit singkat:
+1. file penting
+2. fitur yang aktif
+3. fitur yang belum aktif
+4. blocker utama agar project siap publish
+
+Lalu lanjut implementasi perbaikannya.
+
+==================================================
+BAGIAN 2 — SIAPKAN PROJECT AGAR SIAP PUBLISH
+==================================================
+
+Rapikan project agar production-ready dan siap dipublish dari Replit.
+
+Yang harus dicek dan diperbaiki:
+- environment variables
+- Supabase URL dan anon key handling
+- struktur app routes
+- error handling
+- loading states
+- empty states
+- metadata pages
+- favicon / app icons
+- robots.txt
+- sitemap.xml
+- build errors
+- runtime errors
+- broken links
+- broken forms
+- dead UI
+- placeholder buttons tanpa action
+
+Tambahkan / pastikan tersedia:
+- halaman not-found yang rapi
+- halaman error/fallback yang rapi
+- route protection untuk user/admin
+- redirect setelah login/logout
+- canonical/meta dasar
+- deployment-safe config
+- production-safe form validation
+- console error cleanup
+
+Jika ada script/config yang menghalangi deploy di Replit, perbaiki.
+
+==================================================
+BAGIAN 3 — PERBAIKI UI/UX SECARA MENYELURUH
+==================================================
+
+Perbaiki seluruh UI agar:
+- elegan
+- clean
+- premium
+- simpel
+- tidak ramai
+- responsive di HP, tablet, laptop, desktop
+
+Fokus:
+- landing page
+- navbar
+- hero section
+- feature cards
+- how it works
+- theme showcase
+- pricing
+- testimonials
+- FAQ
+- footer
+- dashboard user
+- dashboard admin
+- CMS admin pages
+- forms
+- tables
+- modals
+- empty states
+
+Samakan design system:
+- button styles
+- input styles
+- card styles
+- shadow
+- border radius
+- spacing
+- typography scale
+- badge styles
+- section titles
+- icon wrappers
+
+Pastikan:
+- tidak ada overflow horizontal
+- mobile navigation rapi
+- tablet layout bagus
+- desktop layout lega
+- admin panel usable di laptop dan tablet
+
+==================================================
+BAGIAN 4 — AKTIFKAN FITUR INTI YANG HARUS JALAN
+==================================================
+
+Pastikan fitur berikut benar-benar aktif end-to-end:
+
+AUTH
+- register
+- login
+- logout
+- protected routes
+- role user/admin
+
+USER FLOW
+- create invitation
+- edit invitation
+- publish/unpublish invitation
+- public invitation by slug
+- RSVP submit
+- guest messages submit
+- digital gift settings
+- gift confirmation
+- gallery upload ke Supabase Storage
+
+ADMIN FLOW
+- lihat users
+- lihat invitations
+- lihat subscription/plan basic
+- atur marketing content
+- atur SEO settings dasar
+- atur webmaster tokens dasar
+- atur theme wedding builder
+
+Jika ada mock data lama, refactor ke Supabase atau fallback yang jelas.
+
+==================================================
+BAGIAN 5 — TAMBAHKAN ADMIN WEDDING THEME BUILDER
+==================================================
+
+Sekarang tambahkan fitur besar: admin dapat membuat, mengedit, menyimpan, dan mempublikasikan tema wedding baru secara visual.
+
+Saya ingin fitur ini mirip konsep:
+- Elementor
+- Divi
+- visual page builder
+- drag and drop section/block
+- reusable section
+- admin bisa buat tema tanpa edit kode
+
+Tapi implementasikan sebagai MVP realistis yang stabil, bukan kloning penuh Elementor.
+
+==================================================
+BAGIAN 6 — KONSEP THEME BUILDER YANG DIINGINKAN
+==================================================
+
+Buat admin menu baru:
+- Theme Builder
+- Theme Library
+- Theme Templates
+- Theme Blocks
+- Theme Assignments
+
+Admin harus bisa:
+1. membuat tema baru
+2. memberi nama tema
+3. memberi slug tema
+4. memilih status draft/published
+5. upload thumbnail preview tema
+6. memilih palette warna
+7. memilih typography preset
+8. menyusun section dengan drag & drop
+9. menambah block/section dari library
+10. menghapus block
+11. duplicate block
+12. edit konten block
+13. edit style block
+14. ubah urutan block dengan drag & drop
+15. simpan tema
+16. preview tema
+17. publish tema
+18. assign tema ke invitation tertentu
+
+==================================================
+BAGIAN 7 — SECTION/BLOCK YANG HARUS TERSEDIA DI THEME BUILDER
+==================================================
+
+Buat block library minimal untuk wedding invitation:
+
+1. Opening Cover
+- background image
+- overlay
+- nama pasangan
+- tanggal acara
+- tombol buka undangan
+
+2. Couple Section
+- nama mempelai
+- foto pasangan
+- orang tua
+- short intro
+
+3. Quote Section
+- quote pembuka
+- nama penulis quote
+
+4. Countdown Section
+- countdown timer
+- heading
+- subheading
+
+5. Story / Love Journey Section
+- timeline kisah cinta
+- text + image
+
+6. Event Detail Section
+- akad
+- resepsi
+- tanggal
+- waktu
+- venue
+- alamat
+
+7. Maps Section
+- embed link / maps button
+
+8. Gallery Section
+- grid gallery
+- slider simple jika perlu
+- masonry optional jika ringan
+
+9. RSVP Section
+- title
+- description
+- RSVP form block
+
+10. Guest Messages Section
+- title
+- form
+- list messages
+
+11. Digital Gift Section
+- bank account cards
+- e-wallet cards
+- QRIS placeholder optional
+- gift confirmation button
+
+12. Closing Section
+- thank you message
+- couple names
+- footer note
+
+13. Music Control Block
+- background music toggle/button
+
+14. Divider / Spacer Block
+- simple spacing/decorative separator
+
+==================================================
+BAGIAN 8 — DRAG & DROP BUILDER UX
+==================================================
+
+Builder harus punya 3 area utama:
+
+A. Left Sidebar
+- block library
+- theme settings
+- typography settings
+- color settings
+- global spacing settings
+
+B. Center Canvas
+- preview layout tema
+- drag & drop block order
+- click block to edit
+- duplicate/delete block actions
+
+C. Right Sidebar / Inspector
+- content settings
+- style settings
+- spacing settings
+- background settings
+- text alignment
+- block visibility
+- mobile/tablet/desktop preview options
+
+Interaksi yang diinginkan:
+- drag block dari library ke canvas
+- drag block untuk reorder
+- pilih block lalu edit isinya
+- pilih block lalu edit tampilannya
+- preview responsif
+- autosave atau save manual yang jelas
+
+Gunakan pendekatan yang stabil dan maintainable.
+Jika perlu gunakan library drag & drop yang cocok untuk React/Next.js.
+
+==================================================
+BAGIAN 9 — GLOBAL THEME SETTINGS
+==================================================
+
+Setiap tema harus punya global settings:
+
+- theme name
+- slug
+- thumbnail
+- font heading
+- font body
+- primary color
+- secondary color
+- accent color
+- background color
+- text color
+- border radius scale
+- section spacing
+- button style preset
+- card style preset
+- overlay style
+- animation style ringan optional
+
+Global settings ini harus memengaruhi seluruh block.
+
+==================================================
+BAGIAN 10 — BLOCK STYLE SETTINGS
+==================================================
+
+Setiap block minimal bisa diatur:
+
+- show/hide
+- heading text
+- subheading text
+- body text
+- image
+- background color
+- background image
+- overlay opacity
+- padding
+- margin
+- border radius
+- text alignment
+- max width / container width
+- button text/link jika ada
+
+Gunakan schema data yang rapi supaya block bisa dirender dinamis.
+
+==================================================
+BAGIAN 11 — DATA MODEL THEME BUILDER
+==================================================
+
+Buat struktur database atau schema data yang mendukung builder ini.
+
+Minimal butuh entitas seperti:
+- wedding_themes
+- wedding_theme_blocks
+- wedding_theme_versions optional
+- wedding_theme_assets
+- wedding_theme_assignments optional
+
+Setiap theme harus menyimpan:
+- id
+- name
+- slug
+- status
+- thumbnail_url
+- global_settings JSON
+- created_by
+- created_at
+- updated_at
+
+Setiap block harus menyimpan:
+- id
+- theme_id
+- block_type
+- sort_order
+- content JSON
+- style JSON
+- visibility JSON
+- created_at
+- updated_at
+
+Pastikan struktur ini kompatibel dengan Supabase.
+
+==================================================
+BAGIAN 12 — RENDER ENGINE UNTUK PUBLIC INVITATION
+==================================================
+
+Ubah public invitation renderer agar bisa membaca tema yang dibuat admin.
+
+Artinya:
+- invitation memiliki theme_id
+- public page /invite/[slug] mengambil invitation
+- lalu mengambil theme terkait
+- lalu merender block satu per satu berdasarkan sort_order
+- block renderer harus modular
+- setiap block type punya komponen renderer sendiri
+
+Jika invitation tidak punya custom theme builder data, gunakan fallback theme default yang sudah ada.
+
+==================================================
+BAGIAN 13 — THEME LIBRARY / TEMPLATE MANAGEMENT
+==================================================
+
+Buat halaman admin Theme Library.
+
+Admin bisa:
+- melihat semua tema
+- search/filter tema
+- duplicate tema
+- publish/unpublish tema
+- archive tema
+- preview tema
+- set default theme
+- assign ke invitation
+
+Tambahkan thumbnail cards yang rapi.
+
+==================================================
+BAGIAN 14 — THEME PREVIEW
+==================================================
+
+Buat preview tema yang usable.
+
+Admin harus bisa:
+- preview desktop
+- preview tablet
+- preview mobile
+- preview dengan data demo pasangan
+- preview dengan sample RSVP/messages/gift section
+
+Preview harus cukup akurat untuk menilai hasil builder.
+
+==================================================
+BAGIAN 15 — SEO DAN PUBLISHING UNTUK TEMA
+==================================================
+
+Pastikan tema yang dibuat tidak merusak SEO/public rendering.
+
+Perhatikan:
+- semantic heading structure
+- responsive rendering
+- images optimized
+- block renderer tidak terlalu berat
+- public page tetap cepat
+- metadata invitation tetap bisa dipakai walau theme custom
+- schema wedding/event dasar tetap bisa dirender
+
+==================================================
+BAGIAN 16 — ADMIN CMS + SEO + WEBMASTER
+==================================================
+
+Pastikan admin juga tetap bisa mengatur:
+
+- landing page content
+- hero
+- features
+- pricing
+- testimonials
+- FAQ
+- footer
+- SEO settings
+- Webmaster tools
+- tracking IDs
+- media library
+
+Jika bagian ini sudah ada, rapikan UI dan flow-nya.
+Jika belum lengkap, lanjutkan implementasi dasar yang usable.
+
+==================================================
+BAGIAN 17 — DEPLOY / PUBLISH CHECKLIST
+==================================================
+
+Saya ingin project ini benar-benar siap dipublish dari Replit.
+
+Lakukan checklist:
+- pastikan build sukses
+- pastikan route utama tidak error
+- pastikan env dibaca aman
+- pastikan Supabase integration aman
+- pastikan semua page utama render
+- pastikan admin login dan user login berjalan
+- pastikan public invitation tidak crash
+- pastikan SEO routes seperti sitemap/robots tersedia
+- pastikan media upload tidak rusak
+- pastikan theme builder tidak merusak existing invitation flow
+
+Jika ada hal yang belum production-ready, perbaiki.
+
+==================================================
+BAGIAN 18 — OUTPUT YANG SAYA MAU
+==================================================
+
+Setelah selesai, tampilkan:
+
+1. daftar file yang diubah
+2. fitur yang berhasil diaktifkan
+3. halaman admin baru yang dibuat
+4. struktur database/schema baru yang dipakai
+5. flow theme builder yang sekarang aktif
+6. flow publish/deploy readiness yang sudah diperbaiki
+7. bagian yang masih MVP atau placeholder jika ada
+8. kode final
+
+PENTING:
+Jangan cuma buat UI kosong untuk theme builder.
+Saya ingin MVP visual wedding theme builder yang benar-benar usable oleh admin.
+Prioritaskan kualitas arsitektur, usability, responsive UI, dan publish readiness.
+
+
+Sekarang tingkatkan wedding Theme Builder agar terasa lebih seperti visual builder modern.
+
+Fokus:
+- drag & drop block lebih mulus
+- sidebar block library lebih rapi
+- inspector panel lebih jelas
+- duplicate/delete/reorder block lebih mudah
+- preview canvas lebih nyaman
+- mobile/tablet/desktop preview toggle lebih jelas
+- autosave/save state lebih jelas
+- theme thumbnail dan preview lebih profesional
+
+Tetap jaga agar implementasi stabil dan maintainable.
+Jangan membuat builder terlalu kompleks sampai rusak.
+Targetnya adalah Elementor-like MVP yang usable, bukan clone penuh.
+
+
+Sekarang tambahkan kemampuan agar admin dapat membuat komposisi tema wedding lebih fleksibel.
+
+Tambahkan block/section preset tambahan:
+- text block
+- image block
+- two-column text-image block
+- gallery block
+- CTA block
+- decorative separator
+- countdown block
+- RSVP block
+- gift block
+- closing block
+
+Pastikan semua block bisa:
+- ditambah
+- dipindah
+- dihapus
+- diduplikasi
+- dihide/show
+- diedit content dan style dasarnya
+
+Jaga agar struktur data block tetap rapi dan mudah dirender.
+
+
+Sekarang fokuskan pada final deployment readiness untuk Replit.
+
+Checklist:
+- build dan run tanpa error
+- env variables terdokumentasi
+- Supabase config aman
+- route auth aman
+- route admin aman
+- public pages aman
+- robots.txt aktif
+- sitemap.xml aktif
+- metadata aman
+- image optimization aman
+- tidak ada broken link
+- tidak ada tombol utama yang kosong
+- loading/error states layak production
+
+Tampilkan:
+- deployment blockers yang diperbaiki
+- file config yang diubah
+- langkah publish final yang harus saya lakukan di Replit
+
+

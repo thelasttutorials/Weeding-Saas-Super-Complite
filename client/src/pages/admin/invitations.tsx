@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, Mail, ExternalLink } from "lucide-react";
+import { Search, Mail, ExternalLink, Globe, FileEdit, Archive, Eye } from "lucide-react";
 import { Link } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminInvitation {
   id: string;
@@ -20,14 +22,28 @@ interface AdminInvitation {
   ownerUsername: string;
   publishedAt: string | null;
   createdAt: string;
+  brideName?: string;
+  groomName?: string;
 }
 
 export default function AdminInvitations() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: invitations, isLoading } = useQuery<AdminInvitation[]>({
     queryKey: ["/api/admin/invitations"],
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: string }) =>
+      apiRequest("POST", `/api/admin/invitations/${id}/${action}`, {}),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invitations"] });
+      toast({ title: `Undangan berhasil di-${variables.action}!` });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const filtered = (invitations || []).filter(inv => {
@@ -101,31 +117,76 @@ export default function AdminInvitations() {
           {filtered.map((inv) => (
             <Card key={inv.id} className="border border-card-border" data-testid={`admin-inv-row-${inv.id}`}>
               <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Mail className="w-4 h-4 text-primary" />
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Mail className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <div>
-                        <p className="font-semibold text-sm text-foreground">{inv.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          /invite/{inv.slug} · @{inv.ownerUsername} · {themeLabel[inv.theme] || inv.theme}
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-sm text-foreground truncate">{inv.title}</p>
+                          {statusBadge(inv.status)}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate font-medium">
+                          Pemilik: <span className="text-foreground">@{inv.ownerUsername}</span> · Tema: {themeLabel[inv.theme] || inv.theme}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                          URL: <span className="underline">/invite/{inv.slug}</span>
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-muted-foreground">{inv.views} views</span>
-                        {statusBadge(inv.status)}
-                        {inv.status === "published" && (
-                          <a
-                            href={`/invite/${inv.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-md mr-1">
+                          <Eye className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-[11px] font-semibold text-foreground">{inv.views}</span>
+                        </div>
+
+                        {inv.status === "draft" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                            onClick={() => updateStatusMutation.mutate({ id: inv.id, action: "publish" })}
+                            data-testid={`admin-button-publish-inv-${inv.id}`}
                           >
-                            <Button size="icon" variant="ghost" className="w-6 h-6" data-testid={`admin-button-view-inv-${inv.id}`}>
-                              <ExternalLink className="w-3.5 h-3.5" />
+                            <Globe className="w-3.5 h-3.5" />
+                            Publikasikan
+                          </Button>
+                        )}
+                        {inv.status === "published" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs gap-1"
+                              onClick={() => updateStatusMutation.mutate({ id: inv.id, action: "unpublish" })}
+                              data-testid={`admin-button-unpublish-inv-${inv.id}`}
+                            >
+                              <FileEdit className="w-3.5 h-3.5" />
+                              Ke Draft
                             </Button>
-                          </a>
+                            <a
+                              href={`/invite/${inv.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button size="icon" variant="ghost" className="w-8 h-8" data-testid={`admin-button-view-inv-${inv.id}`}>
+                                <ExternalLink className="w-4 h-4" />
+                              </Button>
+                            </a>
+                          </>
+                        )}
+                        {inv.status !== "archived" && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => updateStatusMutation.mutate({ id: inv.id, action: "archive" })}
+                            data-testid={`admin-button-archive-inv-${inv.id}`}
+                            title="Arsipkan"
+                          >
+                            <Archive className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
                     </div>

@@ -25,6 +25,13 @@ import AdminLayout from "@/pages/admin/layout";
 import AdminDashboard from "@/pages/admin/index";
 import AdminUsers from "@/pages/admin/users";
 import AdminInvitations from "@/pages/admin/invitations";
+import AdminTestimonials from "@/pages/admin/testimonials";
+import AdminFaqs from "@/pages/admin/faqs";
+import AdminPricing from "@/pages/admin/pricing";
+import AdminPayments from "@/pages/admin/payments";
+import AdminSettings from "@/pages/admin/settings";
+import AdminSeo from "@/pages/admin/seo";
+import AdminLogs from "@/pages/admin/logs";
 
 function LoadingScreen() {
   return (
@@ -93,6 +100,27 @@ function Router() {
       </Route>
       <Route path="/admin/invitations">
         {() => <AdminLayout><AdminInvitations /></AdminLayout>}
+      </Route>
+      <Route path="/admin/testimonials">
+        {() => <AdminLayout><AdminTestimonials /></AdminLayout>}
+      </Route>
+      <Route path="/admin/faqs">
+        {() => <AdminLayout><AdminFaqs /></AdminLayout>}
+      </Route>
+      <Route path="/admin/pricing">
+        {() => <AdminLayout><AdminPricing /></AdminLayout>}
+      </Route>
+      <Route path="/admin/payments">
+        {() => <AdminLayout><AdminPayments /></AdminLayout>}
+      </Route>
+      <Route path="/admin/settings">
+        {() => <AdminLayout><AdminSettings /></AdminLayout>}
+      </Route>
+      <Route path="/admin/seo">
+        {() => <AdminLayout><AdminSeo /></AdminLayout>}
+      </Route>
+      <Route path="/admin/logs">
+        {() => <AdminLayout><AdminLogs /></AdminLayout>}
       </Route>
 
       <Route component={NotFound} />
