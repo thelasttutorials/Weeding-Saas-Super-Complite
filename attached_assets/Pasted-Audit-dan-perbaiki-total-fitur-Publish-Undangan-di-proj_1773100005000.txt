@@ -1,0 +1,457 @@
+Audit dan perbaiki total fitur "Publish Undangan" di project WedSaaS sampai benar-benar berfungsi end-to-end.
+
+Masalah saat ini:
+- undangan yang sudah dipublish tidak bisa dibuka
+- link publish tidak bisa diakses publik
+- preview belum bisa dicek
+- fitur di halaman undangan belum aktif
+- RSVP belum bisa dipakai
+- pesan tamu belum aktif
+- gift registry / galeri / maps / countdown belum tampil atau belum berfungsi
+- share link belum benar
+- analytics view tracking belum berjalan
+
+Saya ingin setelah perbaikan, user bisa publish undangan dan langsung mengirim link ke tamu seperti produk SaaS undangan profesional.
+
+==================================================
+TARGET HASIL AKHIR
+==================================================
+
+Setelah selesai, flow wajib berjalan seperti ini:
+
+1. User membuat / mengedit undangan
+2. User klik tombol "Preview"
+3. Preview undangan bisa dibuka dan dicek
+4. User klik tombol "Publish"
+5. Sistem validasi data wajib
+6. Sistem generate slug unik
+7. Status undangan berubah menjadi PUBLISHED
+8. publishedAt tersimpan
+9. Link undangan publik dibuat
+10. Link bisa dibuka oleh siapa saja
+11. Semua section undangan tampil sesuai data
+12. Tamu bisa isi RSVP
+13. Tamu bisa kirim pesan
+14. View tercatat ke analytics
+15. User bisa copy link dan share ke WhatsApp / Telegram
+16. Dashboard user menampilkan status publish dan statistik
+
+==================================================
+PERINTAH UTAMA
+==================================================
+
+Jangan hanya analisis. Langsung audit, perbaiki, dan implementasikan sampai benar-benar berjalan.
+
+Lakukan audit pada:
+- schema Prisma
+- model Invitation
+- route public invitation
+- route preview invitation
+- publish action / API
+- dashboard invitation list
+- builder/layout data
+- RSVP submission
+- guest message submission
+- analytics tracking
+- share link generation
+- validation sebelum publish
+
+==================================================
+1. PERBAIKI DATABASE MODEL
+==================================================
+
+Pastikan model Invitation memiliki field yang cukup untuk publish:
+
+Invitation
+- id
+- userId
+- tenantId optional
+- themeId
+- pricingPlanId optional
+- brideName
+- groomName
+- slug
+- title
+- description
+- coverImage
+- eventDate
+- location
+- mapsUrl
+- musicUrl optional
+- status
+- publishedAt optional
+- guestCount
+- totalViews
+- createdAt
+- updatedAt
+
+Gunakan enum InvitationStatus:
+- DRAFT
+- PUBLISHED
+- EXPIRED
+- ARCHIVED
+
+Jika belum ada, tambahkan juga:
+InvitationSection
+- id
+- invitationId
+- type
+- contentJson
+- sortOrder
+- isActive
+
+InvitationBuilderLayout
+- id
+- invitationId
+- layoutJson
+- version
+- updatedAt
+
+Pastikan relasi ke:
+- Theme
+- RSVP
+- GuestMessage
+- GiftRegistry
+- InvitationView
+
+==================================================
+2. VALIDASI SEBELUM PUBLISH
+==================================================
+
+Sebelum undangan bisa dipublish, validasi minimal:
+
+- brideName wajib ada
+- groomName wajib ada
+- eventDate wajib ada
+- themeId wajib ada
+- slug harus tersedia atau bisa digenerate
+- minimal ada konten/section undangan
+- status draft harus valid untuk dipublish
+
+Jika belum valid:
+- jangan publish
+- tampilkan error yang jelas ke user
+- contoh:
+  "Nama mempelai belum lengkap"
+  "Tanggal acara belum diisi"
+  "Tema belum dipilih"
+  "Konten undangan belum tersedia"
+
+==================================================
+3. GENERATE SLUG UNIK
+==================================================
+
+Saat publish:
+- generate slug jika slug kosong
+- slug berbasis nama mempelai + tahun atau format aman
+- pastikan unik di database
+
+Contoh:
+ahmad-sari-2025
+ahmad-sari-2025-2 jika sudah ada
+
+Slug wajib aman untuk URL.
+
+==================================================
+4. PUBLISH ACTION HARUS BENAR-BENAR MENYIMPAN
+==================================================
+
+Saat user klik Publish:
+- update status menjadi PUBLISHED
+- simpan publishedAt = now
+- simpan slug final
+- return publicUrl
+
+Contoh public URL:
+https://domain.com/invitation/ahmad-sari-2025
+
+Jika multi-tenant aktif, siapkan struktur agar nanti bisa diarahkan ke:
+https://tenant.domain.com/invitation/slug
+atau
+https://subdomain.domain.com
+
+Tapi minimal route /invitation/[slug] harus berjalan dulu.
+
+==================================================
+5. ROUTE PUBLIC UNDANGAN WAJIB BERJALAN
+==================================================
+
+Buat atau perbaiki route:
+
+/invitation/[slug]
+
+Route ini harus:
+- fetch undangan berdasarkan slug
+- include theme
+- include sections/layout
+- include gallery jika ada
+- include gift registry jika ada
+- include guest messages terbaru
+- include RSVP summary jika perlu
+- hanya tampil jika status = PUBLISHED
+- jika tidak ditemukan -> 404
+- jika belum dipublish -> tampilkan halaman "Undangan belum dipublish"
+
+Jangan sampai blank page.
+
+==================================================
+6. ROUTE PREVIEW WAJIB BERJALAN
+==================================================
+
+Buat atau perbaiki route preview:
+
+/preview/[invitationId]
+atau
+/dashboard/invitations/[id]/preview
+
+Preview harus:
+- bisa dibuka meski status masih DRAFT
+- menampilkan tampilan undangan live
+- menampilkan semua section
+- tidak mencatat analytics view publik
+- aman hanya untuk pemilik/admin
+
+==================================================
+7. SEMUA SECTION UNDANGAN HARUS TAMPIL
+==================================================
+
+Saat undangan dibuka, tampilkan data nyata sesuai invitation:
+
+- cover / hero pasangan
+- nama mempelai
+- tanggal acara
+- countdown
+- deskripsi pembuka
+- love story
+- jadwal acara
+- lokasi + maps
+- galeri foto
+- RSVP form
+- gift registry
+- pesan tamu
+- footer penutup
+
+Jika ada builder JSON/layout JSON, render berdasarkan layout tersebut.
+Jika belum, render fallback berdasarkan section yang tersedia.
+
+==================================================
+8. AKTIFKAN FITUR RSVP
+==================================================
+
+Form RSVP harus benar-benar berfungsi.
+
+Field:
+- guestName
+- attendanceStatus (YES / NO / MAYBE)
+- guestCount
+- message optional
+
+Saat submit:
+- validasi input
+- simpan ke tabel RSVP
+- kaitkan ke invitationId
+- tampilkan toast sukses
+- optionally update summary count
+- buat notification/activity jika sistem notifikasi tersedia
+
+Jika undangan belum publish, RSVP public tidak boleh aktif.
+
+==================================================
+9. AKTIFKAN FITUR PESAN TAMU
+==================================================
+
+Guest message harus bisa dipakai.
+
+Field:
+- guestName
+- message
+
+Saat submit:
+- validasi
+- simpan ke GuestMessage
+- tampilkan di daftar ucapan
+- urutkan terbaru atau paling relevan
+- tampilkan loading state dan success state
+
+==================================================
+10. AKTIFKAN GIFT REGISTRY
+==================================================
+
+Jika data gift registry tersedia:
+- tampilkan bank/ewallet
+- tombol copy nomor rekening
+- catatan hadiah jika ada
+
+Jika tidak ada:
+- section bisa disembunyikan otomatis
+
+==================================================
+11. AKTIFKAN GALERI FOTO
+==================================================
+
+Jika invitation punya gallery:
+- tampilkan grid atau carousel
+- responsive mobile
+- lightbox optional
+
+Jika belum ada data:
+- jangan tampilkan section kosong jelek
+
+==================================================
+12. AKTIFKAN MAPS / LOKASI
+==================================================
+
+Jika mapsUrl / location tersedia:
+- tampilkan alamat
+- tombol buka Google Maps
+- embed jika memungkinkan
+Jika tidak ada:
+- hide section
+
+==================================================
+13. AKTIFKAN COUNTDOWN
+==================================================
+
+Jika eventDate tersedia:
+- tampilkan countdown realtime
+- hitung hari, jam, menit, detik
+- jika tanggal lewat, tampilkan status acara selesai
+
+==================================================
+14. AKTIFKAN SHARE LINK
+==================================================
+
+Di dashboard dan halaman undangan, sediakan:
+- copy link
+- share WhatsApp
+- share Telegram
+
+Gunakan URL publish yang benar-benar valid.
+
+==================================================
+15. AKTIFKAN ANALYTICS VIEW TRACKING
+==================================================
+
+Saat halaman public invitation dibuka:
+- simpan record ke InvitationView
+- simpan invitationId
+- simpan timestamp
+- simpan userAgent / device jika memungkinkan
+- simpan ipAddress jika environment memungkinkan
+
+Analytics dashboard user harus menampilkan:
+- total views
+- views per hari
+- device summary jika bisa
+
+Preview route tidak boleh dihitung sebagai public analytics.
+
+==================================================
+16. UPDATE DASHBOARD USER
+==================================================
+
+Di halaman daftar undangan user, tampilkan:
+
+- status undangan (Draft / Published / Expired)
+- slug
+- public link jika published
+- publishedAt
+- total views
+- total RSVP
+- tombol:
+  - Edit
+  - Preview
+  - Publish
+  - Unpublish (opsional)
+  - Copy Link
+  - Share
+  - View Public Page
+
+Jika sudah published, tombol View Public Page harus benar-benar membuka halaman publik.
+
+==================================================
+17. TANGANI ERROR DENGAN RAPI
+==================================================
+
+Tangani kasus berikut:
+
+- slug tidak ditemukan -> 404 page
+- invitation belum publish -> info page
+- invitation milik user lain di preview -> forbidden
+- database error -> fallback error UI
+- publish gagal -> toast error jelas
+- section kosong -> tampilkan fallback elegan, bukan crash
+
+==================================================
+18. TOAST DAN FEEDBACK
+==================================================
+
+Saat publish sukses:
+"Undangan berhasil dipublish 🎉"
+
+Saat copy link:
+"Link undangan berhasil disalin"
+
+Saat publish gagal:
+"Undangan belum bisa dipublish. Lengkapi data terlebih dahulu."
+
+Saat RSVP sukses:
+"Konfirmasi kehadiran berhasil dikirim"
+
+Saat pesan tamu sukses:
+"Ucapan berhasil dikirim"
+
+==================================================
+19. SELF-CHECK YANG WAJIB DILAKUKAN
+==================================================
+
+Sebelum selesai, cek dan pastikan:
+
+1. Apakah publish benar-benar mengubah status di DB?
+2. Apakah publishedAt tersimpan?
+3. Apakah slug unik tersimpan?
+4. Apakah route /invitation/[slug] berjalan?
+5. Apakah preview route berjalan?
+6. Apakah halaman public tidak blank?
+7. Apakah semua section tampil?
+8. Apakah RSVP submit menyimpan data?
+9. Apakah guest message submit menyimpan data?
+10. Apakah gift registry tampil bila ada data?
+11. Apakah maps tampil bila ada data?
+12. Apakah countdown berjalan?
+13. Apakah view tracking tersimpan?
+14. Apakah copy/share link menggunakan URL benar?
+15. Apakah dashboard user menunjukkan status publish yang benar?
+
+==================================================
+20. OUTPUT YANG SAYA MAU
+==================================================
+
+Berikan hasil akhir berupa:
+- file yang diperbaiki
+- route publish
+- route public invitation
+- route preview
+- schema Prisma jika berubah
+- query fetch invitation public
+- form RSVP final
+- form guest message final
+- analytics tracking logic
+- dashboard invitation action buttons
+- penjelasan bug yang ditemukan dan bagaimana diperbaiki
+
+==================================================
+21. PRIORITAS UTAMA
+==================================================
+
+Prioritas paling penting:
+1. Publish benar-benar jalan
+2. Link invitation bisa dibuka publik
+3. Preview bisa dicek
+4. RSVP aktif
+5. Pesan tamu aktif
+6. Share link aktif
+7. Analytics view aktif
+
+Jangan berhenti di tampilan UI. Semua harus benar-benar bekerja end-to-end.
+Langsung perbaiki sampai bisa dipakai mengirim undangan ke tamu.
