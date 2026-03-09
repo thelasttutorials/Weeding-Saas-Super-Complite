@@ -1,0 +1,369 @@
+Sekarang fokus penuh untuk memperbaiki dan mengaktifkan fitur "Tema Wedding" di project WedSaaS agar benar-benar berfungsi, terlihat premium, dan hasil akhirnya keren.
+
+Masalah saat ini:
+- section tema wedding baru terlihat seperti kartu preview
+- tema belum benar-benar memengaruhi tampilan undangan publik
+- tema belum terasa berbeda secara visual
+- hasil tema belum cukup mewah, elegan, dan meyakinkan
+- kemungkinan masih hanya UI / preview statis
+
+Tujuan utama:
+Saya ingin fitur tema wedding ini benar-benar aktif dan usable, sehingga:
+1. user/admin bisa memilih tema wedding
+2. pilihan tema tersimpan ke database
+3. halaman undangan publik benar-benar berubah sesuai tema yang dipilih
+4. setiap tema punya desain yang berbeda, premium, dan responsif
+5. hasil tema terlihat cantik, elegan, modern, dan cocok untuk wedding invitation SaaS
+
+==================================================
+BAGIAN 1 — AKTIFKAN FITUR PILIH TEMA
+==================================================
+
+Aktifkan fitur tema agar bukan hanya preview.
+
+Kebutuhan:
+- setiap invitation memiliki theme yang aktif
+- pilihan tema tersimpan di database
+- user bisa memilih tema dari dashboard/builder
+- saat user memilih tema, pilihan langsung tersimpan
+- halaman public invitation /invite/[slug] membaca theme yang dipilih
+- jika theme belum dipilih, gunakan default theme
+
+Pastikan:
+- tidak hanya mengganti warna card preview
+- benar-benar mengubah tampilan undangan publik
+- data theme tersimpan per invitation
+
+==================================================
+BAGIAN 2 — BUAT 4 TEMA WEDDING YANG BENAR-BENAR BERBEDA
+==================================================
+
+Buat 4 tema wedding premium yang benar-benar berbeda secara visual, bukan sekadar beda warna.
+
+Tema yang harus dibuat:
+
+1. Classic Elegant
+Nuansa:
+- mewah
+- formal
+- elegan
+- timeless
+- cocok untuk pernikahan klasik
+Ciri visual:
+- dark luxury palette
+- serif heading
+- ornament halus
+- spacing lega
+- detail mewah
+- hero cover terasa formal
+
+2. Minimal Modern
+Nuansa:
+- clean
+- modern
+- simpel
+- premium
+- airy
+Ciri visual:
+- layout minimal
+- warna netral
+- tipografi tegas
+- section clean
+- banyak white space
+- cocok untuk pasangan modern
+
+3. Romantic Floral
+Nuansa:
+- manis
+- romantis
+- lembut
+- hangat
+- feminin elegan
+Ciri visual:
+- soft pink/rose palette
+- floral decorative accents ringan
+- rounded soft style
+- typography romantis
+- suasana lebih emosional
+
+4. Luxury Gold
+Nuansa:
+- glamor
+- prestige
+- eksklusif
+- premium
+- royal
+Ciri visual:
+- warm gold/brown palette
+- heading mewah
+- detail elegan
+- tone lebih eksklusif
+- cocok untuk wedding premium
+
+Setiap tema harus benar-benar punya:
+- hero layout berbeda
+- typography berbeda
+- warna berbeda
+- card/detail section berbeda
+- button style berbeda
+- section spacing/style berbeda
+- atmosfer visual yang berbeda
+
+Jangan hanya ubah background.
+Buat masing-masing terasa seperti template wedding premium yang nyata.
+
+==================================================
+BAGIAN 3 — TEMA HARUS DITERAPKAN KE HALAMAN UNDANGAN PUBLIK
+==================================================
+
+Pastikan saat theme dipilih, halaman undangan publik berubah nyata.
+
+Halaman yang dipengaruhi:
+- opening cover
+- nama pasangan
+- countdown
+- love story
+- event details
+- maps
+- gallery
+- RSVP section
+- guest messages
+- digital gift
+- closing section
+
+Untuk tiap tema, render section-section ini dengan style khusus sesuai tema.
+
+Artinya:
+- section renderer harus membaca current theme
+- setiap theme punya class/style/layout variant sendiri
+- gunakan arsitektur yang rapi dan scalable
+- jika perlu gunakan theme config object per tema
+
+==================================================
+BAGIAN 4 — THEME SYSTEM YANG RAPI
+==================================================
+
+Rapikan arsitektur theme system.
+
+Buat struktur yang jelas, misalnya:
+- theme configs
+- theme tokens
+- theme components
+- section renderer by theme
+- fallback default theme
+
+Setiap theme minimal punya:
+- theme id / slug
+- display name
+- short description
+- color palette
+- typography preset
+- button style
+- card style
+- spacing preset
+- hero variant
+- section style presets
+
+Gunakan pendekatan maintainable.
+Jangan hardcode theme logic berantakan di banyak file.
+
+==================================================
+BAGIAN 5 — PERBAIKI THEME PREVIEW CARDS
+==================================================
+
+Perbaiki tampilan section "Tema yang Memukau" seperti di landing page agar terasa lebih premium.
+
+Perbaiki:
+- ukuran card
+- preview visual
+- typography nama tema
+- deskripsi tema
+- spacing
+- hover effect
+- active/selected state
+
+Card harus:
+- terlihat premium
+- menampilkan preview yang lebih realistis
+- ada visual cue kalau tema bisa dipilih
+- ada selected state yang jelas
+- responsif di mobile/tablet/desktop
+
+Jika user klik tema:
+- buka preview tema
+- atau pilih tema untuk invitation
+- atau tampilkan CTA yang jelas seperti "Gunakan Tema Ini" / "Preview Tema"
+
+Jangan biarkan card hanya jadi pajangan.
+
+==================================================
+BAGIAN 6 — TAMBAHKAN PREVIEW TEMA YANG NYATA
+==================================================
+
+Buat preview tema yang benar-benar membantu user melihat hasil.
+
+Kebutuhan:
+- preview desktop
+- preview tablet
+- preview mobile
+- preview dengan sample data pasangan
+- preview dengan RSVP / gift / gallery section
+- preview harus terasa seperti halaman undangan sungguhan
+
+Jika memungkinkan:
+- saat user klik preview tema, buka preview modal/page
+- render full invitation page menggunakan tema itu
+
+==================================================
+BAGIAN 7 — TAMBAHKAN FITUR PILIH TEMA DI DASHBOARD / BUILDER
+==================================================
+
+Di dashboard user/admin, buat halaman atau section Theme Selection yang usable.
+
+Kebutuhan:
+- tampilkan semua tema available
+- card preview rapi
+- search/filter jika perlu
+- tombol "Pilih Tema"
+- tombol "Preview"
+- selected state jelas
+- theme yang dipilih langsung tersimpan ke invitation
+
+Jika user mengganti tema:
+- preview invitation ikut berubah
+- halaman public invitation menggunakan theme baru
+
+==================================================
+BAGIAN 8 — BUAT TEMA RESPONSIF DAN BAGUS DI SEMUA PERANGKAT
+==================================================
+
+Pastikan setiap tema wedding terlihat bagus di:
+- HP
+- tablet
+- laptop
+- desktop besar
+
+Perhatikan:
+- hero section mobile
+- nama pasangan tidak kepotong
+- countdown tetap rapi
+- event detail stack dengan baik
+- gallery tetap enak dilihat
+- RSVP form tetap nyaman
+- gift section tetap clean
+- spacing tidak rusak
+- typography tidak terlalu kecil/besar
+
+Tujuan:
+tema harus terlihat premium bukan hanya di desktop, tetapi juga sangat bagus di mobile.
+
+==================================================
+BAGIAN 9 — POLISH VISUAL AGAR TEMA TERLIHAT KEREN
+==================================================
+
+Sekarang polish seluruh visual tema agar hasilnya benar-benar keren dan meyakinkan.
+
+Arah desain:
+- premium
+- wedding aesthetic
+- elegan
+- tidak norak
+- tidak terlalu ramai
+- tidak terlalu template-looking
+- clean and classy
+
+Perbaiki:
+- hierarchy visual
+- white space
+- section separators
+- button elegance
+- heading style
+- background treatment
+- ornament secukupnya
+- shadow/border secukupnya
+
+Jangan gunakan dekorasi berlebihan.
+Fokus pada tema wedding modern yang premium.
+
+==================================================
+BAGIAN 10 — HUBUNGKAN KE DATABASE / SUPABASE
+==================================================
+
+Pastikan pilihan tema benar-benar tersimpan di Supabase.
+
+Kebutuhan:
+- invitation menyimpan selected theme
+- data theme bisa diambil dari database atau theme config
+- public page membaca theme dari invitation
+- dashboard menampilkan theme aktif user
+- perubahan theme benar-benar persist setelah refresh
+
+Jika sebelumnya masih local state/dummy:
+- ubah ke database-backed flow
+
+==================================================
+BAGIAN 11 — ADMIN DAPAT MENGELOLA TEMA
+==================================================
+
+Tambahkan kemampuan admin untuk mengelola tema wedding.
+
+Admin minimal bisa:
+- melihat daftar tema
+- aktif/nonaktifkan tema
+- mengubah nama display tema
+- mengubah deskripsi tema
+- mengubah thumbnail preview
+- menentukan urutan tema
+- menentukan tema default
+
+Jika memungkinkan:
+- admin juga bisa mengedit pengaturan global tema seperti:
+  - warna utama
+  - warna sekunder
+  - font heading
+  - font body
+  - style button
+  - thumbnail preview
+
+Tetap jaga implementasi stabil dan tidak terlalu rumit.
+
+==================================================
+BAGIAN 12 — FALLBACK DAN DEFAULT BEHAVIOR
+==================================================
+
+Pastikan behavior aman:
+- jika theme tidak ditemukan, pakai default theme
+- jika invitation tidak punya theme, pakai theme default
+- jika preview data kosong, gunakan sample data yang elegan
+- jangan sampai public page error hanya karena theme missing
+
+==================================================
+BAGIAN 13 — CLEAN CODE DAN MAINTAINABILITY
+==================================================
+
+Rapikan implementasi agar:
+- reusable
+- mudah ditambah tema baru
+- mudah dirawat
+- tidak banyak duplikasi kode
+- renderer per tema modular
+- style/theme logic tidak berantakan
+
+Jika ada kode lama yang membuat theme system kacau, refactor dengan aman.
+
+==================================================
+BAGIAN 14 — OUTPUT YANG SAYA MAU
+==================================================
+
+Setelah selesai, tampilkan:
+1. file yang diubah
+2. bagaimana flow pemilihan tema sekarang bekerja
+3. bagaimana public invitation merender tema
+4. tema mana saja yang sudah aktif
+5. bagian admin yang ditambahkan untuk mengelola tema
+6. bagian responsive yang diperbaiki
+7. kode final
+
+PENTING:
+Jangan hanya mempercantik card preview.
+Saya ingin tema wedding ini benar-benar hidup, keren, premium, dan memengaruhi halaman undangan sungguhan.

@@ -1,0 +1,277 @@
+Tolong upgrade section "Tema yang Memukau" di website WedSaaS agar bukan hanya card statis, tetapi benar-benar interaktif dan meyakinkan untuk calon user.
+
+TARGET:
+Saya ingin user bisa:
+1. melihat preview/demo tiap tema
+2. klik tema untuk lihat detail
+3. mencoba demo tema
+4. melihat review/testimoni per tema
+5. melihat badge free/premium
+6. melihat tombol "Preview", "Pilih Tema", dan "Lihat Review"
+
+==================================================
+FITUR YANG HARUS DIBUAT
+==================================================
+
+1. SECTION TEMA INTERAKTIF
+Upgrade card tema yang sekarang berisi:
+- thumbnail mockup
+- nama tema
+- subtitle
+
+Menjadi card interaktif yang memiliki:
+- thumbnail preview
+- nama tema
+- deskripsi singkat
+- badge Free atau Premium
+- badge populer jika perlu
+- rating bintang
+- jumlah review
+- tombol:
+  - Preview Demo
+  - Lihat Review
+  - Gunakan Tema
+
+==================================================
+2. HALAMAN / MODAL PREVIEW DEMO TEMA
+==================================================
+
+Saat user klik "Preview Demo", buka:
+- modal fullscreen atau page baru
+
+Tampilkan demo tema yang benar-benar mirip undangan asli, bukan gambar statis.
+
+Isi demo tema:
+- nama pasangan
+- tanggal acara
+- cover section
+- countdown
+- love story
+- jadwal acara
+- galeri
+- RSVP form
+- gift registry
+- lokasi maps
+- pesan tamu
+
+Setiap tema harus punya style berbeda:
+- Classic Elegant
+- Minimal Modern
+- Romantic Floral
+- Luxury Gold
+
+Gunakan data dummy demo yang realistis:
+- Ahmad & Sari
+- 12 Desember 2025
+- lokasi acara
+- galeri foto dummy
+- pesan tamu dummy
+- RSVP dummy
+
+==================================================
+3. FITUR "LIHAT REVIEW"
+==================================================
+
+Saat klik "Lihat Review", buka modal atau drawer yang menampilkan review khusus untuk tema tersebut.
+
+Data review per tema berisi:
+- nama pasangan
+- rating 1–5
+- komentar
+- tanggal review
+- avatar/inisial
+- tema yang digunakan
+
+Contoh review:
+- "Temanya elegan banget dan RSVP-nya mudah dipakai tamu."
+- "Minimal Modern cocok banget buat konsep nikahan kami."
+- "Romantic Floral kelihatan mewah dan manis."
+
+Tampilkan:
+- rata-rata rating
+- total review
+- daftar review terbaru
+
+==================================================
+4. DATABASE / DATA STRUCTURE
+==================================================
+
+Buat struktur data untuk theme reviews:
+
+ThemeReview
+- id
+- themeId
+- reviewerName
+- reviewerAvatar optional
+- rating
+- comment
+- weddingDateLabel optional
+- createdAt
+- isPublished
+
+Tambahkan relasi ke Theme.
+
+Jika belum ingin langsung DB penuh, minimal siapkan struktur Prisma/schema dan seed data agar review bisa tampil dinamis.
+
+==================================================
+5. HALAMAN DETAIL TEMA
+==================================================
+
+Buat halaman:
+- /themes
+- /themes/[slug]
+
+Di halaman detail tema tampilkan:
+- nama tema
+- preview besar
+- deskripsi
+- fitur tema
+- cocok untuk konsep apa
+- badge premium/free
+- tombol preview live
+- tombol gunakan tema
+- section review
+- section tema terkait
+
+==================================================
+6. FILTER DAN SORTING
+==================================================
+
+Di section tema dan halaman /themes, tambahkan:
+- filter Free / Premium
+- filter rating tertinggi
+- sort paling populer
+- sort terbaru
+
+==================================================
+7. CTA YANG JELAS
+==================================================
+
+Tambahkan CTA di setiap card dan detail tema:
+- Preview Demo
+- Lihat Review
+- Gunakan Tema
+- Coba Gratis
+
+==================================================
+8. UI/UX
+==================================================
+
+Buat desain yang modern, meyakinkan, dan premium.
+
+Gunakan:
+- card hover effect
+- smooth animation
+- Framer Motion
+- modal transition
+- responsive mobile
+- loading skeleton
+- empty state kalau review belum ada
+
+==================================================
+9. DEMO DATA YANG WAJIB ADA
+==================================================
+
+Buat seed/demo data:
+4 tema:
+- Classic Elegant
+- Minimal Modern
+- Romantic Floral
+- Luxury Gold
+
+Setiap tema wajib punya:
+- thumbnail
+- short description
+- long description
+- premium/free status
+- rating
+- minimal 3 review
+- 1 demo preview undangan
+
+==================================================
+10. HASIL YANG SAYA MAU
+==================================================
+
+Saya ingin hasil akhir seperti ini:
+
+A. Di homepage section tema:
+- card tema tampil keren
+- ada rating
+- ada jumlah review
+- ada tombol Preview Demo
+- ada tombol Lihat Review
+
+B. Saat klik Preview Demo:
+- muncul preview undangan lengkap sesuai tema
+
+C. Saat klik Lihat Review:
+- muncul review asli/dummy yang meyakinkan
+
+D. Semua data tidak hardcoded sembarangan
+- gunakan data terstruktur
+- kalau bisa dari database
+- minimal siap dihubungkan ke database
+
+==================================================
+11. IMPLEMENTASI TEKNIS
+==================================================
+
+Gunakan Next.js + TypeScript + Tailwind + shadcn/ui.
+
+Buat komponen reusable:
+- ThemeCard
+- ThemePreviewModal
+- ThemeReviewModal
+- ThemeRating
+- ThemeBadge
+- ThemeFilterBar
+
+Jika pakai DB:
+- buat Prisma schema
+- buat seed review data
+- buat query fetch tema + review summary
+
+==================================================
+12. PERBAIKI UX HOMEPAGE
+==================================================
+
+Di section tema homepage, tampilkan misalnya:
+
+Classic Elegant
+Mewah & Timeless
+⭐ 4.9 (128 review)
+
+[Preview Demo] [Lihat Review]
+
+Minimal Modern
+Bersih & Kontemporer
+⭐ 4.8 (96 review)
+
+[Preview Demo] [Lihat Review]
+
+Romantic Floral
+Manis & Romantis
+⭐ 4.9 (154 review)
+
+[Preview Demo] [Lihat Review]
+
+Luxury Gold
+Glamor & Prestige
+⭐ 4.7 (74 review)
+
+[Preview Demo] [Lihat Review]
+
+==================================================
+13. JANGAN HANYA UI STATIS
+==================================================
+
+PENTING:
+Jangan hanya tambahkan tombol palsu.
+Semua tombol harus punya fungsi:
+- Preview Demo membuka preview
+- Lihat Review membuka review
+- Gunakan Tema mengarah ke flow pemilihan tema
+
+Kalau belum ada backend final, buat struktur yang tetap benar dan siap dihubungkan.
+
+Tampilkan file yang perlu dibuat dan implementasikan sampai section tema terasa hidup dan meyakinkan untuk calon user.

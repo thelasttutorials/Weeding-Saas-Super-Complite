@@ -5,10 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Heart, Mail, Users, BarChart3, Palette, CheckCircle, Star,
   ArrowRight, Clock, Gift, MessageSquare, ChevronDown, Sparkles,
-  Shield, Zap, Menu, X, Instagram, Twitter, Facebook,
+  Shield, Zap, Menu, X, Instagram, Twitter, Facebook, Eye, MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ThemePreviewModal, { type ThemeData } from "@/components/theme-preview-modal";
+import ThemeReviewModal from "@/components/theme-review-modal";
 
 const features = [
   { icon: Mail, title: "Undangan Digital", desc: "Buat undangan mobile-first yang indah dengan link unik yang bisa dibagikan ke siapa saja.", color: "bg-rose-500/10 text-rose-600" },
@@ -26,11 +28,88 @@ const steps = [
   { num: "04", title: "Kelola Tamu", desc: "Pantau RSVP, baca pesan, dan konfirmasi hadiah — semua dalam satu dashboard.", icon: BarChart3 },
 ];
 
-const themes = [
-  { name: "Classic Elegant", color: "from-stone-700 via-stone-800 to-stone-900", tag: "Mewah & Timeless", dot: "bg-amber-300" },
-  { name: "Minimal Modern", color: "from-zinc-700 via-zinc-800 to-zinc-900", tag: "Bersih & Kontemporer", dot: "bg-zinc-300" },
-  { name: "Romantic Floral", color: "from-rose-600 via-pink-700 to-rose-900", tag: "Manis & Romantis", dot: "bg-pink-300" },
-  { name: "Luxury Gold", color: "from-yellow-700 via-amber-700 to-yellow-900", tag: "Glamor & Prestige", dot: "bg-yellow-300" },
+const themes: (ThemeData & {
+  color: string;
+  dot: string;
+  previewAccent: string;
+  labels: { text: string; color: string }[];
+})[] = [
+  {
+    id: "classic-elegant",
+    name: "Classic Elegant",
+    tag: "Mewah & Timeless",
+    description: "Nuansa gelap elegan dengan aksen emas. Sempurna untuk pernikahan mewah di hotel atau gedung bergengsi.",
+    rating: 4.9,
+    reviewCount: 128,
+    isPremium: false,
+    badges: ["Paling Populer"],
+    gradient: "from-stone-700 via-stone-800 to-stone-900",
+    color: "from-stone-700 via-stone-800 to-stone-900",
+    dot: "bg-amber-300",
+    accentColor: "#d4a96a",
+    previewAccent: "border-amber-300/30",
+    labels: [
+      { text: "Paling Populer", color: "bg-amber-400/20 text-amber-300 border-amber-400/30" },
+      { text: "Cocok untuk akad indoor", color: "bg-stone-400/20 text-stone-300 border-stone-400/20" },
+    ],
+  },
+  {
+    id: "minimal-modern",
+    name: "Minimal Modern",
+    tag: "Bersih & Kontemporer",
+    description: "Desain clean dan kontemporer yang kekinian. Ideal untuk pasangan yang suka estetika minimalis modern.",
+    rating: 4.8,
+    reviewCount: 96,
+    isPremium: false,
+    badges: ["Terlaris"],
+    gradient: "from-zinc-700 via-zinc-800 to-zinc-900",
+    color: "from-zinc-700 via-zinc-800 to-zinc-900",
+    dot: "bg-zinc-300",
+    accentColor: "#a1a1aa",
+    previewAccent: "border-zinc-300/30",
+    labels: [
+      { text: "Terlaris", color: "bg-blue-400/20 text-blue-300 border-blue-400/30" },
+      { text: "Cocok untuk konsep modern", color: "bg-zinc-400/20 text-zinc-300 border-zinc-400/20" },
+    ],
+  },
+  {
+    id: "romantic-floral",
+    name: "Romantic Floral",
+    tag: "Manis & Romantis",
+    description: "Nuansa floral yang hangat dan romantis. Pilihan terbaik untuk garden wedding yang indah dan manis.",
+    rating: 4.9,
+    reviewCount: 154,
+    isPremium: true,
+    badges: ["Paling Populer"],
+    gradient: "from-rose-600 via-pink-700 to-rose-900",
+    color: "from-rose-600 via-pink-700 to-rose-900",
+    dot: "bg-pink-300",
+    accentColor: "#f472b6",
+    previewAccent: "border-pink-300/30",
+    labels: [
+      { text: "Paling Populer", color: "bg-pink-400/20 text-pink-300 border-pink-400/30" },
+      { text: "Cocok untuk garden wedding", color: "bg-rose-400/20 text-rose-300 border-rose-400/20" },
+    ],
+  },
+  {
+    id: "luxury-gold",
+    name: "Luxury Gold",
+    tag: "Glamor & Prestige",
+    description: "Kemewahan sejati dengan aksen emas di atas latar hitam elegan. Untuk momen pernikahan paling prestisius.",
+    rating: 4.7,
+    reviewCount: 74,
+    isPremium: true,
+    badges: ["Premium"],
+    gradient: "from-yellow-700 via-amber-700 to-yellow-900",
+    color: "from-yellow-700 via-amber-700 to-yellow-900",
+    dot: "bg-yellow-300",
+    accentColor: "#fbbf24",
+    previewAccent: "border-yellow-300/30",
+    labels: [
+      { text: "Premium", color: "bg-yellow-400/20 text-yellow-300 border-yellow-400/30" },
+      { text: "Cocok untuk akad indoor", color: "bg-amber-400/20 text-amber-300 border-amber-400/20" },
+    ],
+  },
 ];
 
 const plans = [
@@ -87,6 +166,8 @@ const stats = [
 export default function Landing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [previewTheme, setPreviewTheme] = useState<ThemeData | null>(null);
+  const [reviewTheme, setReviewTheme] = useState<ThemeData | null>(null);
 
   const navLinks = [
     ["#features", "Fitur"],
@@ -296,34 +377,120 @@ export default function Landing() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Tema yang Memukau</h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Setiap tema dirancang dengan detail untuk mencerminkan keindahan hari istimewamu.</p>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {themes.map((theme) => (
-              <div key={theme.name} className="group rounded-2xl overflow-hidden cursor-pointer hover-elevate-2 transition-all duration-300">
-                <div className={`aspect-[3/4] bg-gradient-to-b ${theme.color} relative flex flex-col items-center justify-center gap-3 p-5`}>
-                  <div className="absolute inset-0 bg-black/10" />
-                  <div className="relative z-10 text-center">
-                    <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-white/10 flex items-center justify-center mx-auto mb-3">
+              <motion.div
+                key={theme.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4 }}
+                className="group rounded-2xl overflow-hidden bg-card border border-card-border hover-elevate-2 transition-all duration-300 flex flex-col"
+                data-testid={`card-theme-${theme.id}`}
+              >
+                <div className={`aspect-[3/4] bg-gradient-to-b ${theme.color} relative flex flex-col items-end justify-between p-4 overflow-hidden`}>
+                  <div className="absolute inset-0 bg-black/15" />
+
+                  <div className="relative z-10 flex flex-wrap gap-1.5 justify-end">
+                    {theme.isPremium && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-400/25 text-yellow-200 border border-yellow-400/30 backdrop-blur-sm">
+                        Premium
+                      </span>
+                    )}
+                    {!theme.isPremium && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-400/25 text-green-200 border border-green-400/30 backdrop-blur-sm">
+                        Free
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="relative z-10 text-center w-full">
+                    <div className="w-10 h-10 rounded-full border-2 border-white/30 bg-white/10 flex items-center justify-center mx-auto mb-3 backdrop-blur-sm">
                       <Heart className="w-5 h-5 text-white/80 fill-current" />
                     </div>
                     <p className="text-white/95 text-sm font-semibold">Ahmad & Sari</p>
                     <div className="w-8 h-px bg-white/40 mx-auto my-2" />
                     <p className="text-white/60 text-xs">12 Desember 2025</p>
+
+                    <div className="flex flex-wrap gap-1 justify-center mt-3">
+                      {theme.labels.map((lbl) => (
+                        <span key={lbl.text} className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border backdrop-blur-sm ${lbl.color}`}>
+                          {lbl.text}
+                        </span>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => setPreviewTheme(theme)}
+                      className="mt-3 w-full py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-semibold transition-all duration-200 backdrop-blur-sm flex items-center justify-center gap-1.5"
+                      data-testid={`button-preview-${theme.id}`}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Preview Demo
+                    </button>
                   </div>
                 </div>
-                <div className="p-4 bg-card border border-card-border border-t-0">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${theme.dot}`} />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{theme.name}</p>
-                      <p className="text-xs text-muted-foreground">{theme.tag}</p>
+
+                <div className="p-4 flex flex-col gap-3 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${theme.dot} shrink-0 mt-0.5`} />
+                      <div>
+                        <p className="text-sm font-bold text-foreground leading-tight">{theme.name}</p>
+                        <p className="text-xs text-muted-foreground">{theme.tag}</p>
+                      </div>
                     </div>
                   </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{theme.description}</p>
+
+                  <button
+                    onClick={() => setReviewTheme(theme)}
+                    className="flex items-center gap-1.5 group/rating hover:opacity-80 transition-opacity w-fit"
+                    data-testid={`button-review-${theme.id}`}
+                  >
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${i <= Math.round(theme.rating) ? "fill-amber-400 text-amber-400" : "fill-muted text-muted-foreground"}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-semibold text-foreground">{theme.rating}</span>
+                    <span className="text-xs text-muted-foreground underline underline-offset-2 group-hover/rating:text-primary transition-colors">
+                      ({theme.reviewCount} review)
+                    </span>
+                  </button>
+
+                  <div className="flex flex-col gap-2 mt-auto pt-1">
+                    <button
+                      onClick={() => setReviewTheme(theme)}
+                      className="w-full py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all duration-200 flex items-center justify-center gap-1.5"
+                      data-testid={`button-lihat-review-${theme.id}`}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Lihat Review
+                    </button>
+                    <Link href="/register">
+                      <Button
+                        size="sm"
+                        className="w-full text-xs font-semibold h-8"
+                        data-testid={`button-gunakan-tema-${theme.id}`}
+                      >
+                        Gunakan Tema
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
+
+      <ThemePreviewModal theme={previewTheme} onClose={() => setPreviewTheme(null)} />
+      <ThemeReviewModal theme={reviewTheme} onClose={() => setReviewTheme(null)} />
 
       {/* Pricing */}
       <section id="pricing" className="py-24 px-4 sm:px-6 bg-muted/30">
