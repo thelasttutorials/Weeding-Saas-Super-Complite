@@ -31,9 +31,15 @@ function Countdown({ targetDate }: { targetDate: string }) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
+    const parsed = targetDate ? new Date(targetDate).getTime() : NaN;
+    if (!targetDate || isNaN(parsed)) return;
+
     const calc = () => {
-      const diff = new Date(targetDate).getTime() - Date.now();
-      if (diff <= 0) return;
+      const diff = parsed - Date.now();
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
       setTimeLeft({
         days: Math.floor(diff / (1000 * 60 * 60 * 24)),
         hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
@@ -80,7 +86,6 @@ export default function InvitePage() {
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false);
   const [msgSubmitted, setMsgSubmitted] = useState(false);
   const [copyingGift, setCopyingGift] = useState<string | null>(null);
-  const [openSection, setOpenSection] = useState<string | null>(null);
 
   const params = new URLSearchParams(search);
   const guestName = params.get("to") || "";
@@ -99,6 +104,29 @@ export default function InvitePage() {
     enabled: !!invitation,
     refetchInterval: 30000,
   });
+
+  // Dynamic SEO — set document title + OG meta tags when invitation loads
+  useEffect(() => {
+    if (!invitation) return;
+    const couple = invitation.couple;
+    const names = couple?.brideName && couple?.groomName
+      ? `${couple.brideName} & ${couple.groomName}`
+      : invitation.title;
+    document.title = `Undangan Pernikahan ${names} | WedSaaS`;
+
+    const setMeta = (property: string, content: string) => {
+      let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null;
+      if (!el) { el = document.createElement("meta"); el.setAttribute("property", property); document.head.appendChild(el); }
+      el.setAttribute("content", content);
+    };
+    setMeta("og:title", `Undangan Pernikahan ${names}`);
+    setMeta("og:description", invitation.content?.openingQuote || `Kami mengundang Anda ke pernikahan ${names}`);
+    setMeta("og:type", "website");
+    if (invitation.coverImage) setMeta("og:image", invitation.coverImage);
+    else if (couple?.couplePhoto) setMeta("og:image", couple.couplePhoto);
+
+    return () => { document.title = "WedSaaS"; };
+  }, [invitation]);
 
   const rsvpForm = useForm<z.infer<typeof rsvpSchema>>({
     resolver: zodResolver(rsvpSchema),
@@ -177,13 +205,22 @@ export default function InvitePage() {
     <div className={`min-h-screen ${styles.bg} font-serif`} style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
       {/* Opening / Hero Cover */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4">
-        <div className={`absolute inset-0 bg-gradient-to-b ${styles.overlay}`} />
-        {invitation.coverImage && (
-          <img src={invitation.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        {invitation.coverImage ? (
+          <>
+            <img src={invitation.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className={`absolute inset-0 bg-gradient-to-b ${styles.overlay}`} />
+          </>
+        ) : couple?.couplePhoto ? (
+          <>
+            <img src={couple.couplePhoto} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className={`absolute inset-0 bg-gradient-to-b ${styles.overlay}`} />
+          </>
+        ) : (
+          <div className={`absolute inset-0 bg-gradient-to-b ${styles.overlay}`} />
         )}
         <div className="relative z-10 text-center max-w-lg">
           {guestName && (
-            <p className="text-white/70 text-sm mb-6 italic">Kepada Yth.</p>
+            <p className="text-white/70 text-sm mb-2 italic">Kepada Yth.</p>
           )}
           {guestName && (
             <p className="text-white text-xl font-bold mb-8">{guestName}</p>
@@ -199,6 +236,11 @@ export default function InvitePage() {
 
           {couple && (couple.brideName || couple.groomName) && (
             <>
+              {couple.couplePhoto && !invitation.coverImage && (
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-white/30 mx-auto mb-6">
+                  <img src={couple.couplePhoto} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
               <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-3">
                 {couple.brideName}
                 <span className="block text-2xl sm:text-3xl text-white/60 my-2">&</span>
@@ -460,7 +502,7 @@ export default function InvitePage() {
                               min={1}
                               max={content?.maxGuests || 5}
                               value={field.value}
-                              onChange={e => field.onChange(parseInt(e.target.value))}
+                              onChange={e => field.onChange(parseInt(e.target.value) || 1)}
                               className="bg-white/10 border-white/20 text-white font-sans"
                               data-testid="input-rsvp-guest-count"
                             />
