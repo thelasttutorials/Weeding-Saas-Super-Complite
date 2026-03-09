@@ -85,7 +85,10 @@ export default function InvitePage() {
   const { toast } = useToast();
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false);
   const [msgSubmitted, setMsgSubmitted] = useState(false);
+  const [giftConfirmSubmitted, setGiftConfirmSubmitted] = useState(false);
+  const [showGiftConfirm, setShowGiftConfirm] = useState(false);
   const [copyingGift, setCopyingGift] = useState<string | null>(null);
+  const [giftConfirmData, setGiftConfirmData] = useState({ name: "", amount: "", message: "" });
 
   const params = new URLSearchParams(search);
   const guestName = params.get("to") || "";
@@ -149,6 +152,17 @@ export default function InvitePage() {
     mutationFn: (data: z.infer<typeof messageSchema>) =>
       apiRequest("POST", `/api/public/${slug}/messages`, data),
     onSuccess: () => { setMsgSubmitted(true); msgForm.reset(); toast({ title: "Ucapan terkirim!" }); },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const giftConfirmMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", `/api/public/${slug}/gift-confirmation`, giftConfirmData),
+    onSuccess: () => {
+      setGiftConfirmSubmitted(true);
+      setGiftConfirmData({ name: "", amount: "", message: "" });
+      toast({ title: "Konfirmasi terkirim!", description: "Terima kasih atas hadiahmu!" });
+    },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
@@ -604,39 +618,138 @@ export default function InvitePage() {
       </section>
 
       {/* Digital Gift */}
-      {invitation.giftAccounts && invitation.giftAccounts.length > 0 && (
+      {(invitation.giftAccounts && invitation.giftAccounts.length > 0) || invitation.giftAddress ? (
         <section className="py-16 px-4">
           <div className="max-w-lg mx-auto">
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-2 text-center">Amplop Digital</p>
-            <p className="text-white/60 text-sm text-center mb-8">Bagi yang ingin memberikan hadiah, berikut informasi rekeningnya</p>
-            <div className="space-y-3">
-              {invitation.giftAccounts.map((gift) => (
-                <div key={gift.id} className={`p-4 rounded-xl border ${styles.card}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-white/50 text-xs uppercase tracking-widest mb-1 font-sans">
-                        {gift.type === "bank" ? gift.bankName : gift.walletName}
-                      </p>
-                      <p className="text-white font-mono text-base">
-                        {gift.type === "bank" ? gift.accountNumber : gift.walletNumber}
-                      </p>
-                      <p className="text-white/60 text-xs font-sans mt-0.5">{gift.accountHolder}</p>
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-2 text-center">Hadiah</p>
+            <p className="text-white/60 text-sm text-center mb-8">Bagi yang ingin memberikan hadiah, berikut informasinya</p>
+
+            {/* Rekening */}
+            {invitation.giftAccounts && invitation.giftAccounts.length > 0 && (
+              <div className="space-y-3 mb-6">
+                {invitation.giftAccounts.map((gift) => (
+                  <div key={gift.id} className={`p-4 rounded-xl border ${styles.card}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-white/50 text-xs uppercase tracking-widest mb-1 font-sans">
+                          {gift.type === "bank" ? gift.bankName : gift.walletName}
+                        </p>
+                        <p className="text-white font-mono text-base">
+                          {gift.type === "bank" ? gift.accountNumber : gift.walletNumber}
+                        </p>
+                        <p className="text-white/60 text-xs font-sans mt-0.5">{gift.accountHolder}</p>
+                      </div>
+                      <button
+                        onClick={() => copyGiftNumber(gift.type === "bank" ? gift.accountNumber : gift.walletNumber, gift.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${styles.btn} text-xs font-sans font-medium shrink-0`}
+                        data-testid={`button-copy-gift-${gift.id}`}
+                      >
+                        {copyingGift === gift.id ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copyingGift === gift.id ? "Disalin!" : "Salin"}
+                      </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Alamat Hadiah Fisik */}
+            {invitation.giftAddress && (
+              <div className={`p-4 rounded-xl border ${styles.card} mb-6`}>
+                <p className="text-white/50 text-xs uppercase tracking-widest mb-2 font-sans flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3" />
+                  Alamat Pengiriman Hadiah
+                </p>
+                <p className="text-white/80 text-sm font-sans leading-relaxed">{invitation.giftAddress}</p>
+              </div>
+            )}
+
+            {/* Gift Confirmation Form */}
+            {invitation.giftAccounts && invitation.giftAccounts.length > 0 && (
+              <div className="mt-4">
+                {giftConfirmSubmitted ? (
+                  <div className={`p-5 rounded-xl border ${styles.card} text-center`}>
+                    <CheckCircle className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
+                    <p className="text-white font-medium text-sm font-sans">Konfirmasi terkirim!</p>
+                    <p className="text-white/50 text-xs font-sans mt-1">Terima kasih atas hadiahmu yang indah</p>
                     <button
-                      onClick={() => copyGiftNumber(gift.type === "bank" ? gift.accountNumber : gift.walletNumber, gift.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${styles.btn} text-xs font-sans font-medium shrink-0`}
-                      data-testid={`button-copy-gift-${gift.id}`}
+                      onClick={() => setGiftConfirmSubmitted(false)}
+                      className="text-white/40 text-xs font-sans mt-3 underline"
                     >
-                      {copyingGift === gift.id ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copyingGift === gift.id ? "Disalin!" : "Salin"}
+                      Kirim konfirmasi lain
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
+                ) : !showGiftConfirm ? (
+                  <button
+                    onClick={() => setShowGiftConfirm(true)}
+                    className={`w-full py-3 rounded-xl border ${styles.card} text-white/60 text-sm font-sans flex items-center justify-center gap-2 hover:text-white/80 transition-colors`}
+                    data-testid="button-show-gift-confirm"
+                  >
+                    <Gift className="w-4 h-4" />
+                    Sudah transfer? Konfirmasi di sini
+                  </button>
+                ) : (
+                  <div className={`p-5 rounded-xl border ${styles.card}`}>
+                    <p className="text-white/60 text-xs uppercase tracking-widest mb-4 font-sans">Konfirmasi Hadiah</p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-white/50 text-xs font-sans block mb-1.5">Nama Lengkap *</label>
+                        <input
+                          type="text"
+                          value={giftConfirmData.name}
+                          onChange={e => setGiftConfirmData(p => ({ ...p, name: e.target.value }))}
+                          placeholder="Nama Anda"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-sans placeholder:text-white/20 focus:outline-none focus:border-white/30"
+                          data-testid="input-gift-confirm-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white/50 text-xs font-sans block mb-1.5">Nominal Transfer (Opsional)</label>
+                        <input
+                          type="text"
+                          value={giftConfirmData.amount}
+                          onChange={e => setGiftConfirmData(p => ({ ...p, amount: e.target.value }))}
+                          placeholder="Rp 500.000"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-sans placeholder:text-white/20 focus:outline-none focus:border-white/30"
+                          data-testid="input-gift-confirm-amount"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-white/50 text-xs font-sans block mb-1.5">Pesan (Opsional)</label>
+                        <textarea
+                          value={giftConfirmData.message}
+                          onChange={e => setGiftConfirmData(p => ({ ...p, message: e.target.value }))}
+                          placeholder="Semoga bahagia selalu..."
+                          rows={2}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-sans placeholder:text-white/20 focus:outline-none focus:border-white/30 resize-none"
+                          data-testid="input-gift-confirm-message"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => setShowGiftConfirm(false)}
+                          className="flex-1 py-2 rounded-lg border border-white/10 text-white/50 text-sm font-sans hover:text-white/70 transition-colors"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          onClick={() => giftConfirmMutation.mutate()}
+                          disabled={!giftConfirmData.name || giftConfirmMutation.isPending}
+                          className={`flex-1 py-2 rounded-lg ${styles.btn} text-sm font-sans font-medium flex items-center justify-center gap-2 disabled:opacity-50`}
+                          data-testid="button-submit-gift-confirm"
+                        >
+                          {giftConfirmMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                          Kirim Konfirmasi
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* Closing */}
       <section className="py-20 px-4 text-center">

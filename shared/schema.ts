@@ -30,6 +30,7 @@ export const invitations = pgTable("invitations", {
   theme: themeEnum("theme").notNull().default("classic_elegant"),
   status: statusEnum("status").notNull().default("draft"),
   coverImage: text("cover_image"),
+  giftAddress: text("gift_address").notNull().default(""),
   views: integer("views").notNull().default(0),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
