@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertInvitationSchema, insertRsvpSchema, insertGuestMessageSchema, insertGiftAccountSchema } from "@shared/schema";
@@ -8,6 +8,10 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { Pool } from "pg";
+
+function userId(req: Request): string {
+  return (req.user as Express.User).id;
+}
 
 const PgSession = connectPgSimple(session);
 
@@ -20,11 +24,12 @@ declare global {
       fullName: string;
       plan: string;
       avatarUrl?: string | null;
+      password: string;
     }
   }
 }
 
-function requireAuth(req: Request, res: Response, next: Function) {
+function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
@@ -40,7 +45,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       secret: process.env.SESSION_SECRET || "wedsaas-secret-key",
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false, maxAge: 30 * 24 * 60 * 60 * 1000 },
+      cookie: { secure: process.env.NODE_ENV === "production", maxAge: 30 * 24 * 60 * 60 * 1000 },
     })
   );
 
@@ -111,20 +116,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/auth/me", requireAuth, (req, res) => {
-    const user = req.user as any;
-    const { password: _, ...safe } = user;
+    const { password: _, ...safe } = req.user!;
     res.json(safe);
   });
 
   // Invitation routes
   app.get("/api/invitations", requireAuth, async (req, res) => {
-    const invitations = await storage.getInvitationsByUser((req.user as any).id);
+    const invitations = await storage.getInvitationsByUser(userId(req));
     res.json(invitations);
   });
 
   app.post("/api/invitations", requireAuth, async (req, res) => {
     try {
-      const data = insertInvitationSchema.parse({ ...req.body, userId: (req.user as any).id });
+      const data = insertInvitationSchema.parse({ ...req.body, userId: userId(req) });
       const inv = await storage.createInvitation(data);
       res.json(inv);
     } catch (err: any) {
@@ -134,20 +138,20 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/invitations/:id", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     res.json(inv);
   });
 
   app.patch("/api/invitations/:id", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const updated = await storage.updateInvitation(req.params.id, req.body);
     res.json(updated);
   });
 
   app.delete("/api/invitations/:id", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     await storage.deleteInvitation(req.params.id);
     res.json({ success: true });
   });
@@ -155,56 +159,56 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Builder detail routes
   app.get("/api/invitations/:id/couple", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const couple = await storage.getCoupleByInvitation(req.params.id);
     res.json(couple || {});
   });
 
   app.put("/api/invitations/:id/couple", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const couple = await storage.upsertCouple({ ...req.body, invitationId: req.params.id });
     res.json(couple);
   });
 
   app.get("/api/invitations/:id/events", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const events = await storage.getEventsByInvitation(req.params.id);
     res.json(events || {});
   });
 
   app.put("/api/invitations/:id/events", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const events = await storage.upsertEvents({ ...req.body, invitationId: req.params.id });
     res.json(events);
   });
 
   app.get("/api/invitations/:id/content", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const content = await storage.getContentByInvitation(req.params.id);
     res.json(content || {});
   });
 
   app.put("/api/invitations/:id/content", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const content = await storage.upsertContent({ ...req.body, invitationId: req.params.id });
     res.json(content);
   });
 
   app.get("/api/invitations/:id/gallery", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const gallery = await storage.getGalleryByInvitation(req.params.id);
     res.json(gallery);
   });
 
   app.post("/api/invitations/:id/gallery", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const img = await storage.addGalleryImage({ ...req.body, invitationId: req.params.id });
     res.json(img);
   });
@@ -217,7 +221,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // RSVP routes
   app.get("/api/invitations/:id/rsvps", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const rsvpList = await storage.getRsvpsByInvitation(req.params.id);
     res.json(rsvpList);
   });
@@ -225,7 +229,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Guest messages routes
   app.get("/api/invitations/:id/messages", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const messages = await storage.getAllMessagesByInvitation(req.params.id);
     res.json(messages);
   });
@@ -238,14 +242,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Gift routes
   app.get("/api/invitations/:id/gifts", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const gifts = await storage.getGiftAccountsByInvitation(req.params.id);
     res.json(gifts);
   });
 
   app.post("/api/invitations/:id/gifts", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     try {
       const data = insertGiftAccountSchema.parse({ ...req.body, invitationId: req.params.id });
       const gift = await storage.createGiftAccount(data);
@@ -263,21 +267,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Gift confirmations
   app.get("/api/invitations/:id/gift-confirmations", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const confs = await storage.getGiftConfirmationsByInvitation(req.params.id);
     res.json(confs);
   });
 
   // Stats
   app.get("/api/stats", requireAuth, async (req, res) => {
-    const stats = await storage.getUserStats((req.user as any).id);
+    const stats = await storage.getUserStats(userId(req));
     res.json(stats);
   });
 
   // Analytics per invitation
   app.get("/api/invitations/:id/analytics", requireAuth, async (req, res) => {
     const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== (req.user as any).id) return res.status(404).json({ message: "Not found" });
+    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     const rsvpList = await storage.getRsvpsByInvitation(req.params.id);
     const msgs = await storage.getAllMessagesByInvitation(req.params.id);
     const confs = await storage.getGiftConfirmationsByInvitation(req.params.id);
@@ -294,7 +298,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // User profile update
   app.patch("/api/users/me", requireAuth, async (req, res) => {
-    const updated = await storage.updateUser((req.user as any).id, {
+    const updated = await storage.updateUser(userId(req), {
       fullName: req.body.fullName,
       email: req.body.email,
     });
@@ -304,7 +308,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.patch("/api/users/me/password", requireAuth, async (req, res) => {
-    const user = await storage.getUser((req.user as any).id);
+    const user = await storage.getUser(userId(req));
     if (!user) return res.status(404).json({ message: "Not found" });
     const match = await bcrypt.compare(req.body.currentPassword, user.password);
     if (!match) return res.status(400).json({ message: "Current password is incorrect" });

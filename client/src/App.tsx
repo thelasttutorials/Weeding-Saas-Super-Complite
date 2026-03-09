@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -20,18 +21,22 @@ import Subscription from "@/pages/dashboard/subscription";
 import AccountSettings from "@/pages/dashboard/settings";
 import InvitePage from "@/pages/invite";
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return (
+function LoadingScreen() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-3">
         <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className="text-muted-foreground text-sm">Loading...</p>
+        <p className="text-muted-foreground text-sm">Memuat...</p>
       </div>
     </div>
   );
+}
+
+function ProtectedLayout({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
   if (!user) return <Redirect to="/login" />;
-  return <Component />;
+  return <DashboardLayout>{children}</DashboardLayout>;
 }
 
 function Router() {
@@ -42,85 +47,31 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/invite/:slug" component={InvitePage} />
       <Route path="/dashboard">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <Overview />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><Overview /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/invitations">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <Invitations />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><Invitations /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/builder/:id">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <Builder />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><Builder /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/rsvp">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <RsvpManagement />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><RsvpManagement /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/messages">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <GuestMessages />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><GuestMessages /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/gifts">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <GiftSettings />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><GiftSettings /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/analytics">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <Analytics />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><Analytics /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/subscription">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <Subscription />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><Subscription /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/settings">
-        {() => (
-          <ProtectedRoute component={() => (
-            <DashboardLayout>
-              <AccountSettings />
-            </DashboardLayout>
-          )} />
-        )}
+        {() => <ProtectedLayout><AccountSettings /></ProtectedLayout>}
       </Route>
       <Route component={NotFound} />
     </Switch>
