@@ -1,31 +1,40 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { Mail, Users, MessageSquare, Eye, TrendingUp, PlusCircle, ArrowRight, Heart } from "lucide-react";
+import { Mail, Users, MessageSquare, Eye, TrendingUp, PlusCircle, ArrowRight, Heart, Crown, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import type { Invitation } from "@shared/schema";
 
-function StatCard({ title, value, icon: Icon, desc, loading }: { title: string; value: number | string; icon: any; desc?: string; loading?: boolean }) {
+const statConfig = [
+  { key: "totalInvitations", label: "Total Undangan", icon: Mail, color: "bg-rose-500/10 text-rose-600", bg: "bg-rose-50 dark:bg-rose-500/10" },
+  { key: "totalRsvp", label: "Total RSVP", icon: Users, color: "bg-violet-500/10 text-violet-600", bg: "bg-violet-50 dark:bg-violet-500/10" },
+  { key: "totalMessages", label: "Pesan Tamu", icon: MessageSquare, color: "bg-blue-500/10 text-blue-600", bg: "bg-blue-50 dark:bg-blue-500/10" },
+  { key: "totalViews", label: "Total Views", icon: Eye, color: "bg-emerald-500/10 text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+];
+
+function StatCard({ title, value, icon: Icon, iconColor, subtext, loading }: {
+  title: string; value: number | string; icon: any; iconColor: string; subtext?: string; loading?: boolean;
+}) {
   return (
-    <Card>
+    <Card className="border border-card-border">
       <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <p className="text-sm text-muted-foreground mb-1">{title}</p>
-            {loading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <p className="text-2xl font-bold text-foreground" data-testid={`stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>{value}</p>
-            )}
-            {desc && <p className="text-xs text-muted-foreground mt-1">{desc}</p>}
-          </div>
-          <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-            <Icon className="w-5 h-5 text-primary" />
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className={`w-10 h-10 rounded-xl ${iconColor} flex items-center justify-center`}>
+            <Icon className="w-5 h-5" />
           </div>
         </div>
+        {loading ? (
+          <Skeleton className="h-8 w-20 mb-1" />
+        ) : (
+          <p className="text-2xl font-extrabold text-foreground tracking-tight" data-testid={`stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+            {value}
+          </p>
+        )}
+        <p className="text-sm text-muted-foreground font-medium mt-0.5">{title}</p>
+        {subtext && <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>}
       </CardContent>
     </Card>
   );
@@ -46,24 +55,35 @@ export default function Overview() {
     queryKey: ["/api/invitations"],
   });
 
-  const recentInvitations = invitations?.slice(0, 3) || [];
+  const recentInvitations = invitations?.slice(0, 4) || [];
+  const firstName = user?.fullName?.split(" ")[0] || user?.username;
 
   const attendanceRate = stats && stats.totalRsvp > 0
     ? Math.round((stats.attendingCount / stats.totalRsvp) * 100)
     : 0;
 
+  const statValues: Record<string, string | number> = {
+    totalInvitations: stats?.totalInvitations || 0,
+    totalRsvp: stats?.totalRsvp || 0,
+    totalMessages: stats?.totalMessages || 0,
+    totalViews: stats?.totalViews || 0,
+  };
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-7 animate-fade-in">
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Selamat datang, {user?.fullName?.split(" ")[0] || user?.username}!
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Kelola semua undangan pernikahanmu di sini.</p>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl font-extrabold text-foreground tracking-tight">
+              Halo, {firstName}! 👋
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">Berikut ringkasan aktivitas undangan pernikahanmu.</p>
         </div>
         <Link href="/dashboard/invitations">
-          <Button className="gap-2" data-testid="button-create-invitation">
+          <Button className="gap-2 font-semibold shadow-sm" data-testid="button-create-invitation">
             <PlusCircle className="w-4 h-4" />
             Buat Undangan
           </Button>
@@ -72,29 +92,38 @@ export default function Overview() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Undangan" value={stats?.totalInvitations || 0} icon={Mail} loading={statsLoading} />
-        <StatCard title="Total RSVP" value={stats?.totalRsvp || 0} icon={Users} desc={`${stats?.attendingCount || 0} hadir`} loading={statsLoading} />
-        <StatCard title="Pesan Tamu" value={stats?.totalMessages || 0} icon={MessageSquare} loading={statsLoading} />
-        <StatCard title="Total Views" value={stats?.totalViews || 0} icon={Eye} loading={statsLoading} />
+        {statConfig.map((s) => (
+          <StatCard
+            key={s.key}
+            title={s.label}
+            value={statValues[s.key]}
+            icon={s.icon}
+            iconColor={s.color}
+            subtext={s.key === "totalRsvp" ? `${stats?.attendingCount || 0} hadir` : undefined}
+            loading={statsLoading}
+          />
+        ))}
       </div>
 
       {/* Attendance Rate */}
       {(stats?.totalRsvp || 0) > 0 && (
-        <Card>
+        <Card className="border border-card-border">
           <CardContent className="p-5">
-            <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <p className="text-sm font-medium text-foreground">Tingkat Kehadiran</p>
-                <p className="text-xs text-muted-foreground">{stats?.attendingCount} dari {stats?.totalRsvp} tamu konfirmasi hadir</p>
+                <p className="font-bold text-foreground mb-0.5">Tingkat Kehadiran</p>
+                <p className="text-sm text-muted-foreground">
+                  {stats?.attendingCount} dari {stats?.totalRsvp} tamu mengonfirmasi kehadiran
+                </p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <span className="text-lg font-bold text-primary" data-testid="stat-attendance-rate">{attendanceRate}%</span>
+              <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-lg">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <span className="text-lg font-extrabold text-emerald-600" data-testid="stat-attendance-rate">{attendanceRate}%</span>
               </div>
             </div>
-            <div className="w-full bg-muted rounded-full h-2">
+            <div className="w-full bg-muted rounded-full h-2.5">
               <div
-                className="bg-primary h-2 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-2.5 rounded-full transition-all duration-700"
                 style={{ width: `${attendanceRate}%` }}
               />
             </div>
@@ -105,77 +134,90 @@ export default function Overview() {
       {/* Recent Invitations */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-foreground">Undangan Terbaru</h2>
+          <h2 className="font-bold text-foreground">Undangan Terbaru</h2>
           <Link href="/dashboard/invitations">
-            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-              Lihat semua <ArrowRight className="w-3 h-3" />
+            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-sm font-medium">
+              Lihat semua <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </Link>
         </div>
 
         {invLoading ? (
           <div className="space-y-3">
-            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[72px] w-full rounded-xl" />)}
           </div>
         ) : recentInvitations.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <Card className="border border-dashed border-border">
+            <CardContent className="py-14 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <Heart className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">Belum ada undangan</h3>
-              <p className="text-sm text-muted-foreground mb-4">Buat undangan pernikahan digitalmu yang pertama sekarang!</p>
+              <h3 className="font-bold text-foreground mb-1.5">Belum ada undangan</h3>
+              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">Buat undangan pernikahan digitalmu yang pertama dan mulai bagikan ke semua tamu!</p>
               <Link href="/dashboard/invitations">
-                <Button size="sm" data-testid="button-create-first-invitation">Buat Undangan Pertama</Button>
+                <Button className="font-semibold" data-testid="button-create-first-invitation">
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Buat Undangan Pertama
+                </Button>
               </Link>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {recentInvitations.map((inv) => (
-              <Card key={inv.id} className="hover-elevate" data-testid={`card-invitation-${inv.id}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
-                        <Heart className="w-5 h-5 text-primary fill-current" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-foreground">{inv.title}</p>
-                        <p className="text-xs text-muted-foreground">wedsaas.app/invite/{inv.slug}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={inv.status === "published" ? "default" : inv.status === "archived" ? "secondary" : "outline"}>
-                        {inv.status === "published" ? "Dipublish" : inv.status === "archived" ? "Diarsip" : "Draft"}
-                      </Badge>
-                      <Link href={`/dashboard/builder/${inv.id}`}>
-                        <Button size="sm" variant="ghost" data-testid={`button-edit-${inv.id}`}>Edit</Button>
-                      </Link>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div
+                key={inv.id}
+                className="flex items-center gap-4 p-4 bg-card border border-card-border rounded-xl hover-elevate-2 transition-all"
+                data-testid={`card-invitation-${inv.id}`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Heart className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground truncate">{inv.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">/invite/{inv.slug}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Badge
+                    variant={inv.status === "published" ? "default" : inv.status === "archived" ? "secondary" : "outline"}
+                    className="text-xs font-medium"
+                  >
+                    {inv.status === "published" ? "Aktif" : inv.status === "archived" ? "Arsip" : "Draft"}
+                  </Badge>
+                  <Link href={`/dashboard/builder/${inv.id}`}>
+                    <Button size="sm" variant="ghost" className="text-xs h-7 font-medium" data-testid={`button-edit-${inv.id}`}>
+                      Edit
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Plan Banner */}
+      {/* Upgrade Banner */}
       {user?.plan === "free" && (
-        <Card className="bg-gradient-to-r from-primary/5 to-rose-500/5 border-primary/20">
-          <CardContent className="p-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="font-semibold text-foreground">Upgrade ke Premium</p>
-                <p className="text-sm text-muted-foreground mt-0.5">Akses semua tema, analytics, dan digital gift tanpa watermark.</p>
+        <div className="relative rounded-2xl overflow-hidden border border-primary/20 bg-gradient-to-r from-primary/5 via-rose-500/5 to-pink-500/5 p-6">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center mt-0.5 flex-shrink-0">
+                <Crown className="w-5 h-5 text-primary" />
               </div>
-              <Link href="/dashboard/subscription">
-                <Button size="sm" data-testid="button-upgrade">Upgrade Sekarang</Button>
-              </Link>
+              <div>
+                <p className="font-bold text-foreground">Upgrade ke Premium</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Buka semua tema, analytics lengkap, dan digital gift tanpa watermark.</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <Link href="/dashboard/subscription">
+              <Button size="sm" className="font-semibold shadow-sm shrink-0 gap-1.5" data-testid="button-upgrade">
+                <Sparkles className="w-3.5 h-3.5" />
+                Upgrade Sekarang
+              </Button>
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );
