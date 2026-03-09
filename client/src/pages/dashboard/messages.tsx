@@ -17,6 +17,7 @@ export default function GuestMessages() {
   const [selectedInvId, setSelectedInvId] = useState<string>("");
   const [search, setSearch] = useState("");
   const [visFilter, setVisFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   const { data: invitations } = useQuery<Invitation[]>({ queryKey: ["/api/invitations"] });
   const currentInvId = selectedInvId || invitations?.[0]?.id || "";
@@ -35,11 +36,16 @@ export default function GuestMessages() {
     },
   });
 
-  const filtered = (messages || []).filter(m => {
-    const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.message.toLowerCase().includes(search.toLowerCase());
-    const matchVis = visFilter === "all" || (visFilter === "visible" && m.isVisible) || (visFilter === "hidden" && !m.isVisible);
-    return matchSearch && matchVis;
-  });
+  const filtered = (messages || [])
+    .filter(m => {
+      const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.message.toLowerCase().includes(search.toLowerCase());
+      const matchVis = visFilter === "all" || (visFilter === "visible" && m.isVisible) || (visFilter === "hidden" && !m.isVisible);
+      return matchSearch && matchVis;
+    })
+    .sort((a, b) => {
+      const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortOrder === "newest" ? -diff : diff;
+    });
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -79,16 +85,25 @@ export default function GuestMessages() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Cari pesan..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" data-testid="input-search-messages" />
+          <Input placeholder="Cari nama atau isi pesan..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" data-testid="input-search-messages" />
         </div>
         <Select value={visFilter} onValueChange={setVisFilter}>
-          <SelectTrigger className="w-full sm:w-48" data-testid="select-visibility-filter">
+          <SelectTrigger className="w-full sm:w-44" data-testid="select-visibility-filter">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Pesan</SelectItem>
             <SelectItem value="visible">Tampil</SelectItem>
             <SelectItem value="hidden">Disembunyikan</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortOrder} onValueChange={v => setSortOrder(v as "newest" | "oldest")}>
+          <SelectTrigger className="w-full sm:w-40" data-testid="select-sort-messages">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Terbaru</SelectItem>
+            <SelectItem value="oldest">Terlama</SelectItem>
           </SelectContent>
         </Select>
       </div>

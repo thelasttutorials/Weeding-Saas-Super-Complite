@@ -1,0 +1,429 @@
+Audit seluruh project ini dan identifikasi dua hal utama:
+
+1. masalah UI/UX
+2. fitur yang masih dummy / belum aktif
+
+Fokus audit UI:
+- layout dashboard
+- sidebar
+- navbar/header
+- spacing antar section
+- konsistensi button
+- konsistensi input/form
+- card layout
+- table layout
+- typography
+- mobile responsiveness
+- preview panel
+- alignment dan hierarchy visual
+
+Fokus audit fitur:
+- login/register
+- create invitation
+- edit invitation
+- publish invitation
+- public invitation page
+- RSVP form
+- guest messages
+- digital gift settings
+- gallery upload
+- dashboard stats
+- analytics
+- account settings
+
+Untuk setiap item, jelaskan:
+- apakah hanya UI
+- apakah dummy/local state
+- apakah sudah tersambung ke Supabase
+- file mana yang terlibat
+- apa yang kurang agar benar-benar aktif
+
+Output yang saya mau:
+1. daftar masalah UI paling penting
+2. daftar fitur aktif vs belum aktif
+3. file-file inti yang perlu disentuh
+4. urutan refactor paling aman
+
+Jangan ubah kode dulu. Audit dulu.
+
+
+Sekarang perbaiki seluruh UI global agar aplikasi terasa seperti SaaS modern yang clean, stabil, dan konsisten.
+
+Fokus perbaikan:
+- rapikan dashboard layout
+- samakan spacing system
+- samakan typography scale
+- samakan style button
+- samakan style input, select, textarea
+- samakan style cards dan table
+- rapikan sidebar width, collapse behavior, dan mobile state
+- rapikan navbar/header
+- perbaiki alignment yang aneh
+- hapus visual noise
+- hilangkan komponen yang membuat halaman terasa penuh tapi tidak berguna
+
+Prioritas:
+1. konsistensi visual
+2. layout responsif
+3. hierarchy yang jelas
+4. UI yang lebih sederhana dan premium
+
+Jangan tambahkan fitur baru.
+Jangan ubah branding utama.
+Jangan buat UI terlalu ramai.
+
+Output:
+- file yang diubah
+- ringkasan perubahan UI
+- kode final
+
+Sekarang sederhanakan aplikasi ini menjadi MVP yang stabil dan usable.
+
+Nonaktifkan atau hapus sementara fitur yang belum siap, belum tersambung backend, atau hanya memperberat UI:
+
+- admin panel jika masih dummy
+- subscription billing jika masih UI saja
+- analytics palsu
+- white label jika belum aktif
+- chart dummy
+- stat card palsu
+- tombol palsu yang tidak melakukan action nyata
+
+Pertahankan dan fokuskan aplikasi pada fitur inti:
+- auth
+- invitation list
+- create invitation
+- edit invitation
+- public invitation page
+- RSVP
+- guest messages
+- digital gift settings
+- gallery upload
+- account settings
+
+Tujuan:
+- dashboard lebih ringan
+- UI lebih masuk akal
+- user flow lebih jelas
+- tidak ada fitur setengah jadi yang membingungkan
+
+Output:
+- fitur yang dihapus / disembunyikan sementara
+- perubahan menu/sidebar
+- file yang diubah
+- kode final
+
+Sekarang aktifkan authentication secara nyata menggunakan Supabase Auth.
+
+Kebutuhan:
+- register dengan email dan password
+- login dengan email dan password
+- logout
+- session persistence
+- redirect ke dashboard setelah login
+- proteksi route dashboard jika belum login
+- tampilkan data user yang login di account/settings
+- hapus auth dummy lama
+
+Gunakan best practice Next.js App Router + Supabase:
+- pisahkan client dan server helper dengan rapi
+- gunakan pattern auth yang stabil
+- tangani loading state
+- tangani error state
+- jangan hanya membuat UI, tetapi auth harus benar-benar aktif
+
+Output:
+- file yang diubah
+- flow auth yang aktif
+- kode final
+
+Sekarang hubungkan project ini ke Supabase database secara nyata untuk fitur inti.
+
+Aktifkan tabel berikut:
+- profiles
+- invitations
+- invitation_couples
+- invitation_events
+- invitation_gallery
+- rsvps
+- guest_messages
+- gift_accounts
+- gift_confirmations
+
+Yang harus dilakukan:
+- buat type TypeScript yang selaras dengan tabel
+- buat service/data access layer yang benar-benar membaca dan menulis ke Supabase
+- hapus mock data yang bentrok untuk fitur inti
+- pastikan relasi data per user dan per invitation benar
+- pastikan invitation hanya milik user yang login
+
+Output:
+- file services/types yang diubah
+- data flow yang aktif
+- fitur yang sekarang sudah tersambung ke database
+
+Sekarang aktifkan fitur Create Invitation agar benar-benar menyimpan data ke Supabase.
+
+Kebutuhan:
+- form create invitation submit ke database
+- otomatis menyimpan user_id dari user yang login
+- validasi slug unik
+- simpan data minimal: title, slug, status, user_id
+- redirect ke halaman edit invitation setelah berhasil dibuat
+- tampilkan success state
+- tampilkan error state jika gagal
+- daftar invitation di dashboard langsung menampilkan hasil create nyata
+
+Jangan gunakan local state palsu untuk submit utama.
+Pastikan flow create invitation benar-benar aktif.
+
+Output:
+- file yang diubah
+- flow create invitation end-to-end
+- kode final
+
+Sekarang aktifkan invitation builder agar benar-benar membaca dan menyimpan data ke Supabase.
+
+Section yang harus aktif:
+- Basic Info
+- Couple Info
+- Event Details
+- Additional Content
+- RSVP Settings
+- Theme Settings
+- Publish Settings
+
+Kebutuhan:
+- saat halaman edit dibuka, data invitation diambil dari database
+- saat user menyimpan perubahan, data diupdate ke database
+- jika ada autosave palsu, ubah menjadi save yang jelas dan stabil
+- tampilkan loading state
+- tampilkan saving state
+- tampilkan success/error feedback
+- pastikan semua data tersimpan per invitation
+
+Jangan hanya rapikan UI form.
+Aktifkan CRUD nyata untuk builder ini.
+
+Output:
+- file yang diubah
+- bagian builder yang aktif
+- kode final
+
+Sekarang aktifkan halaman publik undangan berdasarkan slug.
+
+Kebutuhan:
+- route /invite/[slug] harus membaca data nyata dari Supabase
+- hanya invitation dengan status published yang bisa diakses publik
+- jika slug tidak ditemukan, tampilkan not found yang rapi
+- tampilkan data pasangan, acara, galeri, gift settings, RSVP settings, dan message settings dari database
+- dukung query param ?to=NamaTamu dan tampilkan personalisasi
+
+Pastikan:
+- halaman publik tidak lagi memakai dummy data
+- data yang tampil benar-benar milik invitation tersebut
+- loading/fallback state rapi
+- performa tetap baik
+
+Output:
+- file yang diubah
+- flow data public invitation page
+- kode final
+
+Sekarang aktifkan fitur publish dan unpublish invitation.
+
+Kebutuhan:
+- user bisa mengubah status invitation menjadi draft atau published
+- saat published, set published_at
+- halaman publik hanya bisa diakses jika status published
+- badge status di dashboard harus membaca status nyata
+- tombol publish/unpublish harus menyimpan perubahan ke database
+
+Tambahkan validasi sebelum publish:
+- title harus ada
+- slug harus valid
+- data pasangan minimal ada
+- data acara minimal ada
+
+Jika data belum cukup, tampilkan pesan error yang jelas dan jangan publish.
+
+Output:
+- file yang diubah
+- validasi publish
+- flow publish/unpublish
+- kode final
+
+Sekarang aktifkan fitur RSVP secara nyata end-to-end.
+
+Public side:
+- form RSVP submit ke Supabase
+- field: name, whatsapp, guest_count, attendance_status, message
+- hanya untuk invitation published
+- tampilkan success state setelah submit
+- tampilkan error state jika gagal
+
+Dashboard side:
+- halaman RSVP Management membaca data nyata dari database
+- statistik hadir/tidak hadir/pending dihitung dari data nyata
+- search dan filter bekerja pada data nyata
+- data RSVP harus terkait invitation_id yang benar
+
+Jangan gunakan dummy submit atau dummy stats.
+
+Output:
+- file yang diubah
+- flow RSVP end-to-end
+- kode final
+
+Sekarang aktifkan fitur guest messages secara nyata end-to-end.
+
+Public side:
+- form guest message submit ke Supabase
+- field: name, message
+- hanya invitation published yang bisa menerima message
+- tampilkan daftar ucapan terbaru dari database
+
+Dashboard side:
+- halaman Guest Messages membaca data nyata
+- user bisa hide/show message
+- filter terbaru/terlama benar-benar bekerja
+- status hidden tersimpan di database
+
+Pastikan:
+- tidak ada dummy list
+- tidak ada mock submit
+- semua action membaca/menulis ke Supabase
+
+Output:
+- file yang diubah
+- flow guest messages end-to-end
+- kode final
+
+Sekarang aktifkan fitur Digital Gift Settings secara nyata.
+
+Dashboard:
+- user dapat menambah atau mengubah rekening bank
+- user dapat menambah atau mengubah e-wallet
+- user dapat menyimpan alamat kirim hadiah
+- semua data tersimpan ke Supabase
+
+Public page:
+- section digital gift membaca data nyata dari database
+- tombol copy tetap berfungsi
+- tampilkan hanya data gift milik invitation tersebut
+
+Tambahkan juga:
+- gift confirmation form yang menyimpan ke tabel gift_confirmations
+
+Pastikan:
+- flow dashboard ke public page benar-benar aktif
+- tidak ada dummy data tersisa
+- relasi invitation_id benar
+
+Output:
+- file yang diubah
+- flow digital gift end-to-end
+- kode final
+
+Sekarang aktifkan gallery upload menggunakan Supabase Storage.
+
+Kebutuhan:
+- upload image ke bucket Supabase Storage
+- simpan file path / public URL ke tabel invitation_gallery
+- tampilkan galeri dari database
+- user bisa hapus gambar
+- jika UI reorder sudah ada, aktifkan reorder dan simpan sort_order
+- hanya owner invitation yang bisa upload/hapus
+
+Pastikan:
+- tidak ada upload placeholder palsu
+- loading upload ada
+- error upload ditangani
+- public invitation page menampilkan gallery nyata
+
+Output:
+- file yang diubah
+- flow storage upload
+- integrasi gallery yang aktif
+- kode final
+
+Sekarang ubah dashboard stats agar berbasis data nyata, bukan dummy.
+
+Overview page:
+- total invitations
+- total RSVP
+- total guest messages
+- attendance rate
+- total gift confirmations
+
+Analytics:
+- gunakan data nyata sejauh tersedia
+- jika invitation views belum punya tracking, jangan tampilkan angka palsu
+- ganti chart dummy dengan summary card yang jujur jika perlu
+
+Prinsip:
+lebih baik sederhana tapi nyata daripada cantik tapi palsu
+
+Pastikan semua query scoped ke user yang sedang login.
+
+Output:
+- file yang diubah
+- statistik nyata yang sekarang aktif
+- bagian yang masih placeholder dengan alasan jujur
+
+Sekarang rapikan ownership dan access control seluruh aplikasi agar aman untuk multi-tenant SaaS.
+
+Kebutuhan:
+- user hanya bisa melihat invitation miliknya sendiri di dashboard
+- user hanya bisa edit invitation miliknya sendiri
+- user hanya bisa melihat RSVP, guest messages, gift settings milik invitation-nya sendiri
+- public hanya bisa membaca invitation yang published
+- semua query harus scoped dengan benar
+- siapkan struktur yang kompatibel dengan Supabase RLS
+
+Jika ada service/query yang terlalu terbuka, perbaiki.
+Jika ada mock/global data yang masih dipakai, ganti.
+
+Output:
+- file yang diubah
+- perbaikan access control
+- area yang sekarang sudah aman
+
+Sekarang lakukan cleanup final agar aplikasi ini benar-benar usable.
+
+Checklist:
+- hapus mock data yang bentrok dengan data nyata
+- hapus dummy logic yang sudah tidak dipakai
+- hapus tombol palsu yang tidak punya action
+- rapikan loading state
+- rapikan empty state
+- rapikan success/error feedback
+- rapikan broken import
+- perbaiki client/server boundary
+- pastikan form utama benar-benar aktif
+- pastikan tidak ada fitur inti yang cuma tampilan
+
+Output:
+- daftar cleanup
+- fitur yang sekarang benar-benar aktif
+- fitur yang masih placeholder
+- kode final
+
+Sekarang lakukan UI refinement final agar project ini terasa seperti SaaS premium yang bersih dan meyakinkan.
+
+Fokus:
+- sederhanakan layout
+- kurangi elemen yang tidak perlu
+- samakan card radius, border, shadow, spacing, dan typography
+- buat dashboard lebih lega dan mudah dipahami
+- buat form builder lebih rapi dan tidak melelahkan
+- perbaiki responsive mobile
+- hilangkan kesan template acak
+
+Jangan tambah fitur baru.
+Fokus pada polish, consistency, clarity, dan usability.
+
+Output:
+- file yang diubah
+- peningkatan UI utama
+- kode final

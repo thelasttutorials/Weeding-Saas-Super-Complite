@@ -1,0 +1,293 @@
+Sekarang ubah project ini dari sekadar UI/demo menjadi aplikasi yang benar-benar aktif dan berjalan end-to-end.
+
+Tujuan utama:
+Saya ingin SEMUA fitur utama project ini benar-benar aktif, terhubung ke Supabase, dan bisa digunakan secara nyata, bukan hanya tampilan atau dummy state.
+
+Jangan fokus pada dekorasi UI dulu.
+Fokus utama adalah:
+1. mengaktifkan semua flow utama
+2. menghubungkan semua form ke Supabase
+3. menghubungkan semua list/table ke data nyata
+4. menambahkan role-based access
+5. memastikan user app dan admin panel benar-benar berjalan
+
+==================================================
+FITUR YANG HARUS BENAR-BENAR AKTIF
+==================================================
+
+A. AUTHENTICATION
+Aktifkan Supabase Auth secara nyata:
+- register
+- login
+- logout
+- session persistence
+- proteksi route dashboard
+- redirect setelah login
+- forgot password flow UI-ready
+- account info membaca user nyata
+
+B. USER ROLE & ADMIN ROLE
+Tambahkan sistem role:
+- user biasa
+- admin
+
+Kebutuhan:
+- simpan role user di profile/database
+- route dashboard user hanya untuk user login
+- route admin hanya untuk admin
+- jika non-admin membuka admin page, redirect/forbidden
+- navbar/sidebar menyesuaikan role
+
+C. USER DASHBOARD
+Aktifkan dashboard user secara nyata:
+- overview stats membaca data nyata
+- invitation list membaca data nyata
+- create invitation aktif
+- edit invitation aktif
+- publish/unpublish aktif
+- rsvp management aktif
+- guest messages management aktif
+- digital gift settings aktif
+- gallery upload aktif
+- account settings aktif
+
+D. ADMIN PANEL
+Aktifkan admin panel secara nyata:
+- admin dashboard membaca data nyata platform
+- users list membaca semua user
+- invitations list membaca semua invitation
+- subscriptions list membaca data nyata/placeholder realistis dari database
+- platform stats membaca data nyata
+- admin bisa melihat status user, role, plan, invitation count
+- admin panel bukan dummy
+
+E. INVITATION BUILDER
+Aktifkan builder invitation:
+- create invitation simpan ke database
+- edit invitation ambil data dari database
+- update semua section ke database
+- validasi slug unik
+- status draft/published aktif
+- publish hanya jika data minimum valid
+
+F. PUBLIC INVITATION PAGE
+Aktifkan halaman publik:
+- route /invite/[slug] membaca data nyata dari Supabase
+- hanya status published yang bisa dibuka publik
+- slug invalid menampilkan not found
+- query param ?to=NamaTamu aktif
+- semua section membaca data invitation nyata
+
+G. RSVP SYSTEM
+Aktifkan RSVP end-to-end:
+- form RSVP submit ke database
+- dashboard RSVP membaca data nyata
+- statistik RSVP dihitung dari data nyata
+- filter dan search bekerja
+
+H. GUEST MESSAGE SYSTEM
+Aktifkan ucapan tamu:
+- form submit ke database
+- daftar ucapan membaca data nyata
+- hide/show message aktif
+- moderation tersimpan ke database
+
+I. DIGITAL GIFT SYSTEM
+Aktifkan amplop digital:
+- dashboard user dapat mengisi rekening bank
+- dashboard user dapat mengisi e-wallet
+- gift confirmation form submit ke database
+- halaman publik membaca data nyata gift settings
+
+J. GALLERY UPLOAD
+Aktifkan upload galeri:
+- upload ke Supabase Storage
+- simpan URL/path ke database
+- list gallery membaca data nyata
+- delete image aktif
+- reorder jika sudah ada UI-nya
+
+K. ANALYTICS
+Aktifkan analytics berbasis data nyata sebisa mungkin:
+- total invitations
+- total RSVP
+- total messages
+- total gift confirmations
+- attendance rate
+
+Jika invitation views belum ada tracking yang benar, jangan tampilkan angka palsu.
+Gunakan fallback yang jujur.
+
+L. SUBSCRIPTION / PLAN
+Aktifkan struktur subscription:
+- Free
+- Premium
+- Business
+
+Kebutuhan minimal:
+- simpan plan user di database
+- dashboard membaca plan user
+- admin bisa melihat plan user
+- UI pricing terhubung ke data plan
+- belum perlu payment gateway penuh, tapi struktur harus aktif dan nyata
+
+M. WHITE LABEL
+Jika white label sudah ada di UI:
+- aktifkan simpan pengaturan white-label ke database
+- brand name
+- logo
+- primary color
+- hanya user Business yang bisa mengakses
+
+==================================================
+INSTRUKSI IMPLEMENTASI
+==================================================
+
+Sekarang lakukan implementasi nyata, bukan mock.
+
+1. Cari dan hapus atau refactor semua:
+- dummy state
+- fake submit
+- fake chart
+- mock services yang bentrok
+- placeholder logic yang membuat fitur terlihat aktif padahal tidak
+
+2. Ganti semua flow dummy menjadi flow nyata berbasis:
+- Supabase Auth
+- Supabase Database
+- Supabase Storage
+
+3. Pastikan setiap halaman utama:
+- benar-benar membaca data dari database
+- benar-benar menulis data ke database
+- punya loading state
+- punya empty state
+- punya error handling
+- punya success feedback
+
+4. Pastikan semua query scoped dengan benar:
+- user hanya bisa melihat data miliknya sendiri
+- admin bisa melihat data platform
+- public hanya bisa melihat invitation published
+
+==================================================
+DATABASE YANG HARUS DIGUNAKAN
+==================================================
+
+Gunakan atau aktifkan tabel berikut secara nyata:
+- profiles
+- invitations
+- invitation_couples
+- invitation_events
+- invitation_content jika ada
+- invitation_gallery
+- rsvps
+- guest_messages
+- gift_accounts
+- gift_confirmations
+- subscriptions
+- white_label_settings
+
+Jika perlu, rapikan relasi dan service layer agar konsisten.
+
+==================================================
+ROLE & ACCESS CONTROL
+==================================================
+
+Implementasikan access control yang nyata:
+
+USER:
+- hanya melihat invitation miliknya sendiri
+- hanya mengedit invitation miliknya sendiri
+- hanya melihat RSVP / messages / gifts invitation miliknya sendiri
+
+ADMIN:
+- dapat melihat semua user
+- dapat melihat semua invitation
+- dapat melihat statistik platform
+- dapat melihat data subscription
+
+PUBLIC:
+- hanya dapat mengakses invitation yang published
+- dapat submit RSVP dan guest message hanya untuk invitation published
+
+==================================================
+NEXT.JS + SUPABASE BEST PRACTICE
+==================================================
+
+Gunakan best practice yang sesuai dengan stack project:
+- pisahkan server/client code dengan benar
+- rapikan helper Supabase
+- gunakan service layer / data access layer
+- rapikan folder structure jika perlu
+- jangan biarkan query tersebar berantakan di banyak komponen
+- pastikan code modular dan maintainable
+
+==================================================
+PRIORITAS IMPLEMENTASI
+==================================================
+
+Kerjakan dan aktifkan fitur dalam prioritas ini:
+
+1. Auth
+2. User role/admin role
+3. Protected routes
+4. Create invitation
+5. Edit invitation builder
+6. Publish/unpublish
+7. Public invitation by slug
+8. RSVP
+9. Guest messages
+10. Digital gift
+11. Gallery upload
+12. User dashboard stats
+13. Admin panel stats dan management
+14. Subscription / plan
+15. White label jika sudah ada UI
+
+==================================================
+JANGAN LAKUKAN INI
+==================================================
+
+- jangan hanya memperbaiki tampilan
+- jangan bilang selesai kalau masih memakai mock data
+- jangan sisakan tombol utama yang tidak punya action nyata
+- jangan tampilkan chart/statistik palsu
+- jangan biarkan admin panel hanya jadi halaman dekoratif
+- jangan biarkan halaman publik membaca dummy data
+
+==================================================
+HASIL YANG SAYA MAU
+==================================================
+
+Saya ingin hasil akhir seperti ini:
+- user bisa register dan login
+- user bisa membuat undangan
+- user bisa edit undangan
+- user bisa publish undangan
+- undangan publik bisa dibuka dari slug
+- tamu bisa isi RSVP
+- tamu bisa isi ucapan
+- user bisa lihat RSVP dan ucapan di dashboard
+- user bisa atur amplop digital
+- user bisa upload galeri
+- admin bisa lihat semua user dan semua undangan
+- role user/admin benar-benar berjalan
+- semua data tersimpan nyata di Supabase
+- aplikasi terlihat benar-benar hidup, bukan dummy demo
+
+==================================================
+OUTPUT YANG WAJIB DIBERIKAN
+==================================================
+
+Setelah implementasi, tampilkan:
+
+1. daftar file yang diubah
+2. fitur mana saja yang sekarang sudah aktif nyata
+3. fitur mana yang masih placeholder jika memang belum sempat diaktifkan
+4. penjelasan singkat flow user
+5. penjelasan singkat flow admin
+6. kode final yang sudah diperbaiki
+
+Jika ada konflik arsitektur lama, refactor dengan aman agar project menjadi benar-benar usable.
+Prioritaskan functionality di atas kosmetik.
