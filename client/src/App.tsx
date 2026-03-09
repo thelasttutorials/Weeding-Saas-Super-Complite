@@ -16,10 +16,15 @@ import Builder from "@/pages/dashboard/builder";
 import RsvpManagement from "@/pages/dashboard/rsvp";
 import GuestMessages from "@/pages/dashboard/messages";
 import GiftSettings from "@/pages/dashboard/gifts";
+import GalleryPage from "@/pages/dashboard/gallery";
 import Analytics from "@/pages/dashboard/analytics";
 import Subscription from "@/pages/dashboard/subscription";
 import AccountSettings from "@/pages/dashboard/settings";
 import InvitePage from "@/pages/invite";
+import AdminLayout from "@/pages/admin/layout";
+import AdminDashboard from "@/pages/admin/index";
+import AdminUsers from "@/pages/admin/users";
+import AdminInvitations from "@/pages/admin/invitations";
 
 function LoadingScreen() {
   return (
@@ -46,6 +51,8 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/invite/:slug" component={InvitePage} />
+
+      {/* User Dashboard */}
       <Route path="/dashboard">
         {() => <ProtectedLayout><Overview /></ProtectedLayout>}
       </Route>
@@ -64,6 +71,9 @@ function Router() {
       <Route path="/dashboard/gifts">
         {() => <ProtectedLayout><GiftSettings /></ProtectedLayout>}
       </Route>
+      <Route path="/dashboard/gallery">
+        {() => <ProtectedLayout><GalleryPage /></ProtectedLayout>}
+      </Route>
       <Route path="/dashboard/analytics">
         {() => <ProtectedLayout><Analytics /></ProtectedLayout>}
       </Route>
@@ -73,6 +83,18 @@ function Router() {
       <Route path="/dashboard/settings">
         {() => <ProtectedLayout><AccountSettings /></ProtectedLayout>}
       </Route>
+
+      {/* Admin Panel */}
+      <Route path="/admin">
+        {() => <AdminLayout><AdminDashboard /></AdminLayout>}
+      </Route>
+      <Route path="/admin/users">
+        {() => <AdminLayout><AdminUsers /></AdminLayout>}
+      </Route>
+      <Route path="/admin/invitations">
+        {() => <AdminLayout><AdminInvitations /></AdminLayout>}
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );

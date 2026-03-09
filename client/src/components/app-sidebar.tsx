@@ -6,25 +6,25 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Mail, CheckSquare, MessageSquare,
-  Gift, BarChart3, CreditCard, Settings, Heart, LogOut, Crown,
+  Gift, BarChart3, CreditCard, Settings, Heart, LogOut, Crown, Images, Shield,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navItems = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Invitations", url: "/dashboard/invitations", icon: Mail },
+  { title: "Undangan", url: "/dashboard/invitations", icon: Mail },
   { title: "RSVP", url: "/dashboard/rsvp", icon: CheckSquare },
-  { title: "Messages", url: "/dashboard/messages", icon: MessageSquare },
+  { title: "Pesan Tamu", url: "/dashboard/messages", icon: MessageSquare },
   { title: "Digital Gift", url: "/dashboard/gifts", icon: Gift },
+  { title: "Galeri", url: "/dashboard/gallery", icon: Images },
   { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
 ];
 
 const bottomItems = [
-  { title: "Subscription", url: "/dashboard/subscription", icon: CreditCard },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
+  { title: "Langganan", url: "/dashboard/subscription", icon: CreditCard },
+  { title: "Pengaturan", url: "/dashboard/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -36,7 +36,12 @@ export function AppSidebar() {
     return location.startsWith(url);
   };
 
-  const planColor = user?.plan === "premium" ? "text-amber-500" : user?.plan === "business" ? "text-violet-500" : "text-muted-foreground";
+  const planColor =
+    user?.plan === "premium"
+      ? "text-amber-500"
+      : user?.plan === "business"
+        ? "text-violet-500"
+        : "text-muted-foreground";
 
   return (
     <Sidebar>
@@ -86,7 +91,7 @@ export function AppSidebar() {
 
         <SidebarGroup className="px-2 mt-2">
           <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-2 mb-1">
-            Account
+            Akun
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
@@ -111,6 +116,20 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+
+              {user?.isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="h-9 rounded-md transition-all text-violet-600 dark:text-violet-400 font-medium hover:bg-violet-50 dark:hover:bg-violet-500/10"
+                  >
+                    <Link href="/admin" data-testid="nav-admin-panel">
+                      <Shield className="w-4 h-4" />
+                      <span className="text-sm">Admin Panel</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -144,7 +163,7 @@ export function AppSidebar() {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">Sign out</TooltipContent>
+            <TooltipContent side="top">Logout</TooltipContent>
           </Tooltip>
         </div>
       </SidebarFooter>

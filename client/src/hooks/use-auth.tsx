@@ -9,6 +9,7 @@ interface AuthUser {
   email: string;
   fullName: string;
   plan: string;
+  isAdmin: boolean;
   avatarUrl?: string | null;
 }
 

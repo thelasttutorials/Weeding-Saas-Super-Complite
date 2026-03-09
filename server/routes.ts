@@ -24,6 +24,7 @@ declare global {
       email: string;
       fullName: string;
       plan: string;
+      isAdmin: boolean;
       avatarUrl?: string | null;
       password: string;
     }
@@ -33,6 +34,16 @@ declare global {
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (!(req.user as Express.User).isAdmin) {
+    return res.status(403).json({ message: "Forbidden" });
   }
   next();
 }
@@ -267,6 +278,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.delete("/api/invitations/:id/gallery/:imageId", requireAuth, async (req, res) => {
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
       await s.deleteGalleryImage(req.params.imageId);
       res.json({ success: true });
     });
@@ -389,6 +402,27 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const hashed = await bcrypt.hash(req.body.newPassword, 10);
     await storage.updateUser(user.id, { password: hashed });
     res.json({ success: true });
+  });
+
+  // ── Admin routes ─────────────────────────────────────────────────────────────
+
+  app.get("/api/admin/stats", requireAdmin, async (req, res) => {
+    res.json(await storage.getPlatformStats());
+  });
+
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+    res.json(await storage.getAllUsers());
+  });
+
+  app.get("/api/admin/invitations", requireAdmin, async (req, res) => {
+    res.json(await storage.getAllInvitations());
+  });
+
+  app.patch("/api/admin/users/:id/plan", requireAdmin, async (req, res) => {
+    const updated = await storage.updateUser(req.params.id, { plan: req.body.plan });
+    if (!updated) return res.status(404).json({ message: "User not found" });
+    const { password: _, ...safe } = updated;
+    res.json(safe);
   });
 
   // ── Public invitation routes (no auth, RLS allows published data) ────────────

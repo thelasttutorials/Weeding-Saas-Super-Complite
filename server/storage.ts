@@ -86,6 +86,18 @@ export interface IStorage {
     totalViews: number;
     attendingCount: number;
   }>;
+
+  // Admin
+  getAllUsers(): Promise<Omit<User, "password">[]>;
+  getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
+  getPlatformStats(): Promise<{
+    totalUsers: number;
+    totalInvitations: number;
+    totalRsvp: number;
+    totalMessages: number;
+    totalGiftConfirmations: number;
+    publishedInvitations: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -362,6 +374,59 @@ export class DatabaseStorage implements IStorage {
       totalMessages,
       totalViews,
       attendingCount,
+    };
+  }
+
+  async getAllUsers(): Promise<Omit<User, "password">[]> {
+    const result = await this.db.select({
+      id: users.id,
+      username: users.username,
+      fullName: users.fullName,
+      email: users.email,
+      avatarUrl: users.avatarUrl,
+      plan: users.plan,
+      isAdmin: users.isAdmin,
+      createdAt: users.createdAt,
+    }).from(users).orderBy(desc(users.createdAt));
+    return result;
+  }
+
+  async getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]> {
+    const result = await this.db
+      .select({
+        id: invitations.id,
+        userId: invitations.userId,
+        title: invitations.title,
+        slug: invitations.slug,
+        theme: invitations.theme,
+        status: invitations.status,
+        coverImage: invitations.coverImage,
+        views: invitations.views,
+        publishedAt: invitations.publishedAt,
+        createdAt: invitations.createdAt,
+        updatedAt: invitations.updatedAt,
+        ownerUsername: users.username,
+      })
+      .from(invitations)
+      .leftJoin(users, eq(invitations.userId, users.id))
+      .orderBy(desc(invitations.createdAt));
+    return result.map(r => ({ ...r, ownerUsername: r.ownerUsername || "unknown" }));
+  }
+
+  async getPlatformStats() {
+    const [uCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(users);
+    const [iCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(invitations);
+    const [pubCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(invitations).where(eq(invitations.status, "published"));
+    const [rCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(rsvps);
+    const [mCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(guestMessages);
+    const [gCount] = await this.db.select({ count: sql<number>`count(*)::int` }).from(giftConfirmations);
+    return {
+      totalUsers: uCount.count,
+      totalInvitations: iCount.count,
+      publishedInvitations: pubCount.count,
+      totalRsvp: rCount.count,
+      totalMessages: mCount.count,
+      totalGiftConfirmations: gCount.count,
     };
   }
 }

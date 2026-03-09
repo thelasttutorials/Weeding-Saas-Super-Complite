@@ -11,6 +11,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/dashboard/rsvp": { title: "Manajemen RSVP", description: "Pantau konfirmasi kehadiran tamu undangan." },
   "/dashboard/messages": { title: "Pesan Tamu", description: "Baca ucapan dan pesan dari tamu undangan." },
   "/dashboard/gifts": { title: "Digital Gift", description: "Atur akun bank dan e-wallet untuk hadiah digital." },
+  "/dashboard/gallery": { title: "Galeri Foto", description: "Kelola koleksi foto indah undangan Anda." },
   "/dashboard/analytics": { title: "Analitik", description: "Pantau performa dan statistik undangan Anda." },
   "/dashboard/subscription": { title: "Berlangganan", description: "Pilih paket yang sesuai dengan kebutuhan Anda." },
   "/dashboard/settings": { title: "Pengaturan Akun", description: "Kelola informasi dan keamanan akun Anda." },
