@@ -201,6 +201,50 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
   });
 
+  app.post("/api/invitations/:id/publish", requireAuth, async (req, res) => {
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+
+      const errors: string[] = [];
+      if (!inv.slug || inv.slug.length < 3) errors.push("URL undangan tidak valid");
+
+      const couple = await s.getCoupleByInvitation(req.params.id);
+      if (!couple || !couple.brideName?.trim() || !couple.groomName?.trim()) {
+        errors.push("Nama mempelai wanita dan pria wajib diisi (tab Pasangan)");
+      }
+
+      const events = await s.getEventsByInvitation(req.params.id);
+      if (!events || (!events.receptionDate?.trim() && !events.akadDate?.trim())) {
+        errors.push("Tanggal acara (Akad atau Resepsi) wajib diisi (tab Acara)");
+      }
+
+      if (errors.length > 0) {
+        return res.status(422).json({ message: "Data undangan belum lengkap", errors });
+      }
+
+      const updated = await s.updateInvitation(req.params.id, {
+        status: "published",
+        publishedAt: new Date(),
+      });
+      res.json(updated);
+    });
+  });
+
+  app.post("/api/invitations/:id/unpublish", requireAuth, async (req, res) => {
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      const updated = await s.updateInvitation(req.params.id, {
+        status: "draft",
+        publishedAt: null,
+      });
+      res.json(updated);
+    });
+  });
+
   // ── Builder detail routes (RLS-scoped) ──────────────────────────────────────
 
   app.get("/api/invitations/:id/couple", requireAuth, async (req, res) => {

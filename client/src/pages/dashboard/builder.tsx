@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Globe, Loader2, ExternalLink, Image, Plus, Trash2, Copy, CheckCircle, XCircle } from "lucide-react";
@@ -215,17 +216,34 @@ export default function Builder() {
     onError: (err: any) => toast({ title: "Gagal mengubah tema", description: err.message, variant: "destructive" }),
   });
 
+  const [publishErrors, setPublishErrors] = useState<string[]>([]);
+  const [publishErrorOpen, setPublishErrorOpen] = useState(false);
+
   const publishMutation = useMutation({
-    mutationFn: (publish: boolean) => apiRequest("PATCH", `/api/invitations/${id}`, {
-      status: publish ? "published" : "draft",
-      publishedAt: publish ? new Date().toISOString() : null,
-    }),
+    mutationFn: async (publish: boolean) => {
+      const endpoint = publish ? `/api/invitations/${id}/publish` : `/api/invitations/${id}/unpublish`;
+      const res = await apiRequest("POST", endpoint, {});
+      if (!res.ok) {
+        const body = await res.json();
+        const err: any = new Error(body.message || "Gagal");
+        err.errors = body.errors || [];
+        throw err;
+      }
+      return res.json();
+    },
     onSuccess: (_, publish) => {
       queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invitations", id] });
       toast({ title: publish ? "Undangan berhasil dipublish!" : "Undangan dikembalikan ke draft" });
     },
-    onError: (err: any) => toast({ title: "Gagal", description: err.message, variant: "destructive" }),
+    onError: (err: any) => {
+      if (err.errors && err.errors.length > 0) {
+        setPublishErrors(err.errors);
+        setPublishErrorOpen(true);
+      } else {
+        toast({ title: "Gagal", description: err.message, variant: "destructive" });
+      }
+    },
   });
 
   const addImageMutation = useMutation({
@@ -830,6 +848,31 @@ export default function Builder() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Publish validation error dialog */}
+      <AlertDialog open={publishErrorOpen} onOpenChange={setPublishErrorOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Undangan Belum Bisa Dipublish</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-3">Lengkapi data berikut sebelum mempublish undangan:</p>
+                <ul className="space-y-1.5">
+                  {publishErrors.map((err, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      {err}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-close-publish-error">Tutup & Lengkapi</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

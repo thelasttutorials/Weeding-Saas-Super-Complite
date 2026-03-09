@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle, Globe, GlobeLock } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -141,6 +141,56 @@ export default function Invitations() {
     },
   });
 
+  const [publishErrors, setPublishErrors] = useState<string[]>([]);
+  const [publishErrorOpen, setPublishErrorOpen] = useState(false);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+
+  const publishMutation = useMutation({
+    mutationFn: async (id: string) => {
+      setPublishingId(id);
+      const res = await apiRequest("POST", `/api/invitations/${id}/publish`, {});
+      if (!res.ok) {
+        const body = await res.json();
+        const err: any = new Error(body.message || "Gagal publish");
+        err.errors = body.errors || [];
+        throw err;
+      }
+      return res.json() as Promise<Invitation>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      setPublishingId(null);
+      toast({ title: "Undangan berhasil dipublish!", description: "Tamu kini bisa mengakses undangan." });
+    },
+    onError: (err: any) => {
+      setPublishingId(null);
+      if (err.errors && err.errors.length > 0) {
+        setPublishErrors(err.errors);
+        setPublishErrorOpen(true);
+      } else {
+        toast({ title: "Gagal publish", description: err.message, variant: "destructive" });
+      }
+    },
+  });
+
+  const unpublishMutation = useMutation({
+    mutationFn: async (id: string) => {
+      setPublishingId(id);
+      const res = await apiRequest("POST", `/api/invitations/${id}/unpublish`, {});
+      return res.json() as Promise<Invitation>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
+      setPublishingId(null);
+      toast({ title: "Undangan dikembalikan ke draft" });
+    },
+    onError: (err: any) => {
+      setPublishingId(null);
+      toast({ title: "Gagal", description: err.message, variant: "destructive" });
+    },
+  });
+
   const filtered = (invitations || []).filter(inv =>
     inv.title.toLowerCase().includes(search.toLowerCase()) ||
     inv.slug.toLowerCase().includes(search.toLowerCase())
@@ -215,8 +265,8 @@ export default function Invitations() {
           {filtered.map((inv) => (
             <Card key={inv.id} data-testid={`card-invitation-${inv.id}`}>
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                     <Heart className="w-6 h-6 text-primary fill-current" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -224,16 +274,21 @@ export default function Invitations() {
                       <p className="font-semibold text-foreground">{inv.title}</p>
                       <Badge
                         variant={inv.status === "published" ? "default" : inv.status === "archived" ? "secondary" : "outline"}
-                        className="text-xs"
+                        className={`text-xs ${inv.status === "published" ? "bg-emerald-600 hover:bg-emerald-600 text-white border-0" : ""}`}
                         data-testid={`badge-status-${inv.id}`}
                       >
-                        {inv.status === "published" ? "Dipublish" : inv.status === "archived" ? "Diarsip" : "Draft"}
+                        {inv.status === "published" ? "✓ Live" : inv.status === "archived" ? "Diarsip" : "Draft"}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span>/invite/{inv.slug}</span>
                       <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {inv.views} views</span>
                       <span>{themeLabels[inv.theme] || inv.theme}</span>
+                      {inv.status === "published" && inv.publishedAt && (
+                        <span className="text-emerald-600 font-medium">
+                          Dipublish {new Date(inv.publishedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -253,16 +308,47 @@ export default function Invitations() {
                         </Button>
                       </a>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => archiveMutation.mutate(inv.id)}
-                      disabled={inv.status === "archived"}
-                      title="Arsipkan"
-                      data-testid={`button-archive-${inv.id}`}
-                    >
-                      <Archive className="w-4 h-4" />
-                    </Button>
+                    {inv.status === "draft" && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => publishMutation.mutate(inv.id)}
+                        disabled={publishingId === inv.id}
+                        className="gap-1.5"
+                        data-testid={`button-publish-${inv.id}`}
+                      >
+                        {publishingId === inv.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Globe className="w-3.5 h-3.5" />}
+                        Publish
+                      </Button>
+                    )}
+                    {inv.status === "published" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => unpublishMutation.mutate(inv.id)}
+                        disabled={publishingId === inv.id}
+                        className="gap-1.5"
+                        data-testid={`button-unpublish-${inv.id}`}
+                      >
+                        {publishingId === inv.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <GlobeLock className="w-3.5 h-3.5" />}
+                        Unpublish
+                      </Button>
+                    )}
+                    {inv.status !== "archived" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => archiveMutation.mutate(inv.id)}
+                        title="Arsipkan"
+                        data-testid={`button-archive-${inv.id}`}
+                      >
+                        <Archive className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Link href={`/dashboard/builder/${inv.id}`}>
                       <Button size="sm" variant="outline" data-testid={`button-edit-${inv.id}`}>
                         <Edit className="w-4 h-4 mr-1.5" />
@@ -414,6 +500,31 @@ export default function Invitations() {
               {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Hapus
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Publish validation errors */}
+      <AlertDialog open={publishErrorOpen} onOpenChange={setPublishErrorOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Undangan Belum Bisa Dipublish</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-3">Lengkapi data berikut terlebih dahulu di editor undangan:</p>
+                <ul className="space-y-2">
+                  {publishErrors.map((err, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                      {err}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-close-publish-error">Tutup</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
