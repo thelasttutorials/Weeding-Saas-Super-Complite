@@ -51,13 +51,23 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+  // Trust Replit's HTTPS reverse proxy so secure cookies work in production
+  app.set("trust proxy", 1);
+
+  const isProd = process.env.NODE_ENV === "production";
+
   app.use(
     session({
       store: new PgSession({ pool, createTableIfMissing: true }),
       secret: process.env.SESSION_SECRET || "wedsaas-secret-key",
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: process.env.NODE_ENV === "production", maxAge: 30 * 24 * 60 * 60 * 1000 },
+      cookie: {
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+      },
     })
   );
 
