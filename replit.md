@@ -37,16 +37,32 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - Guest name personalization via `?to=GuestName` query param
 
 ## Database Tables
-- `users` - User accounts with plan (free/premium/business)
-- `invitations` - Wedding invitations (slug, theme, status, views)
-- `invitation_couples` - Bride/groom info, love story, photos
-- `invitation_events` - Akad and reception event details
-- `invitation_content` - Opening quote, closing message, RSVP settings
-- `invitation_gallery` - Gallery images
-- `rsvps` - RSVP submissions
-- `guest_messages` - Guest wishes/messages
-- `gift_accounts` - Bank/e-wallet accounts for digital gifting
-- `gift_confirmations` - Gift transfer confirmations
+- `users` - User accounts with plan (free/premium/business) — no RLS (used by auth)
+- `invitations` - Wedding invitations (slug, theme, status, views) — FORCE RLS
+- `invitation_couples` - Bride/groom info, love story, photos — FORCE RLS
+- `invitation_events` - Akad and reception event details — FORCE RLS
+- `invitation_content` - Opening quote, closing message, RSVP settings — FORCE RLS
+- `invitation_gallery` - Gallery images — FORCE RLS
+- `rsvps` - RSVP submissions — FORCE RLS
+- `guest_messages` - Guest wishes/messages — FORCE RLS
+- `gift_accounts` - Bank/e-wallet accounts for digital gifting — FORCE RLS
+- `gift_confirmations` - Gift transfer confirmations — FORCE RLS
+
+## Row Level Security Architecture
+PostgreSQL RLS enforces that users only access their own data at the database level.
+
+**Mechanism**: Each authenticated request uses `withUserContext(userId, fn)` in `server/db.ts`.
+This function checks out a dedicated pg PoolClient, opens a transaction, and sets
+`SET LOCAL app.current_user_id = '{userId}'` (transaction-scoped, safe with connection pools).
+A Drizzle instance bound to that specific client is passed to `createStorage(userDb)`.
+
+**Policies**:
+- Authenticated tables: SELECT/UPDATE/DELETE require `user_id = current_setting('app.current_user_id')`
+- Sub-tables: use `SECURITY DEFINER` helpers `current_user_owns_invitation()` and `invitation_is_published()`
+- Public routes: policies allow SELECT on `status='published'` rows, INSERT on published invitations
+- `increment_invitation_views()`: SECURITY DEFINER function that bypasses RLS for view counting
+
+**Migration**: `migrations/001_row_level_security.sql` — idempotent, safe to re-run.
 
 ## Demo Account
 - Username: `demo`

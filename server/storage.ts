@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { db as defaultDb, type DrizzleDB } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import {
   users, invitations, invitationCouples, invitationEvents,
@@ -77,42 +77,48 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private db: DrizzleDB;
+
+  constructor(dbInstance: DrizzleDB = defaultDb) {
+    this.db = dbInstance;
+  }
+
   async getUser(id: string) {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByUsername(username: string) {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await this.db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
   async getUserByEmail(email: string) {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await this.db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [created] = await db.insert(users).values({ ...user, id: randomUUID() }).returning();
+    const [created] = await this.db.insert(users).values({ ...user, id: randomUUID() }).returning();
     return created;
   }
 
   async updateUser(id: string, data: Partial<User>): Promise<User | undefined> {
-    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    const [updated] = await this.db.update(users).set(data).where(eq(users.id, id)).returning();
     return updated;
   }
 
   async getInvitationsByUser(userId: string): Promise<Invitation[]> {
-    return db.select().from(invitations).where(eq(invitations.userId, userId)).orderBy(desc(invitations.createdAt));
+    return this.db.select().from(invitations).where(eq(invitations.userId, userId)).orderBy(desc(invitations.createdAt));
   }
 
   async getInvitationById(id: string): Promise<Invitation | undefined> {
-    const [inv] = await db.select().from(invitations).where(eq(invitations.id, id));
+    const [inv] = await this.db.select().from(invitations).where(eq(invitations.id, id));
     return inv;
   }
 
   async getInvitationBySlug(slug: string): Promise<Invitation | undefined> {
-    const [inv] = await db.select().from(invitations).where(eq(invitations.slug, slug));
+    const [inv] = await this.db.select().from(invitations).where(eq(invitations.slug, slug));
     return inv;
   }
 
@@ -120,11 +126,11 @@ export class DatabaseStorage implements IStorage {
     const inv = await this.getInvitationBySlug(slug);
     if (!inv) return undefined;
 
-    const [couple] = await db.select().from(invitationCouples).where(eq(invitationCouples.invitationId, inv.id));
-    const [events] = await db.select().from(invitationEvents).where(eq(invitationEvents.invitationId, inv.id));
-    const [content] = await db.select().from(invitationContent).where(eq(invitationContent.invitationId, inv.id));
-    const gallery = await db.select().from(invitationGallery).where(eq(invitationGallery.invitationId, inv.id)).orderBy(invitationGallery.sortOrder);
-    const gifts = await db.select().from(giftAccounts).where(eq(giftAccounts.invitationId, inv.id));
+    const [couple] = await this.db.select().from(invitationCouples).where(eq(invitationCouples.invitationId, inv.id));
+    const [events] = await this.db.select().from(invitationEvents).where(eq(invitationEvents.invitationId, inv.id));
+    const [content] = await this.db.select().from(invitationContent).where(eq(invitationContent.invitationId, inv.id));
+    const gallery = await this.db.select().from(invitationGallery).where(eq(invitationGallery.invitationId, inv.id)).orderBy(invitationGallery.sortOrder);
+    const gifts = await this.db.select().from(giftAccounts).where(eq(giftAccounts.invitationId, inv.id));
 
     return {
       ...inv,
@@ -137,136 +143,134 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInvitation(data: InsertInvitation): Promise<Invitation> {
-    const [inv] = await db.insert(invitations).values({ ...data, id: randomUUID() }).returning();
-    // Initialize couple, events, content
-    await db.insert(invitationCouples).values({ id: randomUUID(), invitationId: inv.id, brideName: "", groomName: "", brideParents: "", groomParents: "", loveStory: "" });
-    await db.insert(invitationEvents).values({ id: randomUUID(), invitationId: inv.id, akadDate: "", akadTime: "", akadVenue: "", akadMapsLink: "", receptionDate: "", receptionTime: "", receptionVenue: "", receptionMapsLink: "" });
-    await db.insert(invitationContent).values({ id: randomUUID(), invitationId: inv.id, openingQuote: "", closingMessage: "", hashtag: "", livestreamLink: "", backgroundMusic: "", enableRsvp: true, rsvpDeadline: "", maxGuests: 2 });
+    const [inv] = await this.db.insert(invitations).values({ ...data, id: randomUUID() }).returning();
+    await this.db.insert(invitationCouples).values({ id: randomUUID(), invitationId: inv.id, brideName: "", groomName: "", brideParents: "", groomParents: "", loveStory: "" });
+    await this.db.insert(invitationEvents).values({ id: randomUUID(), invitationId: inv.id, akadDate: "", akadTime: "", akadVenue: "", akadMapsLink: "", receptionDate: "", receptionTime: "", receptionVenue: "", receptionMapsLink: "" });
+    await this.db.insert(invitationContent).values({ id: randomUUID(), invitationId: inv.id, openingQuote: "", closingMessage: "", hashtag: "", livestreamLink: "", backgroundMusic: "", enableRsvp: true, rsvpDeadline: "", maxGuests: 2 });
     return inv;
   }
 
   async updateInvitation(id: string, data: Partial<Invitation>): Promise<Invitation | undefined> {
-    const [updated] = await db.update(invitations).set({ ...data, updatedAt: new Date() }).where(eq(invitations.id, id)).returning();
+    const [updated] = await this.db.update(invitations).set({ ...data, updatedAt: new Date() }).where(eq(invitations.id, id)).returning();
     return updated;
   }
 
   async deleteInvitation(id: string): Promise<void> {
-    await db.delete(invitations).where(eq(invitations.id, id));
+    await this.db.delete(invitations).where(eq(invitations.id, id));
   }
 
   async incrementViews(id: string): Promise<void> {
-    await db.update(invitations).set({ views: sql`${invitations.views} + 1` }).where(eq(invitations.id, id));
+    await this.db.execute(sql`SELECT increment_invitation_views(${id})`);
   }
 
   async getCoupleByInvitation(invId: string): Promise<InvitationCouple | undefined> {
-    const [couple] = await db.select().from(invitationCouples).where(eq(invitationCouples.invitationId, invId));
+    const [couple] = await this.db.select().from(invitationCouples).where(eq(invitationCouples.invitationId, invId));
     return couple;
   }
 
   async upsertCouple(data: Omit<InvitationCouple, "id">): Promise<InvitationCouple> {
     const existing = await this.getCoupleByInvitation(data.invitationId);
     if (existing) {
-      const [updated] = await db.update(invitationCouples).set(data).where(eq(invitationCouples.invitationId, data.invitationId)).returning();
+      const [updated] = await this.db.update(invitationCouples).set(data).where(eq(invitationCouples.invitationId, data.invitationId)).returning();
       return updated;
     }
-    const [created] = await db.insert(invitationCouples).values({ ...data, id: randomUUID() }).returning();
+    const [created] = await this.db.insert(invitationCouples).values({ ...data, id: randomUUID() }).returning();
     return created;
   }
 
   async getEventsByInvitation(invId: string): Promise<InvitationEvents | undefined> {
-    const [events] = await db.select().from(invitationEvents).where(eq(invitationEvents.invitationId, invId));
+    const [events] = await this.db.select().from(invitationEvents).where(eq(invitationEvents.invitationId, invId));
     return events;
   }
 
   async upsertEvents(data: Omit<InvitationEvents, "id">): Promise<InvitationEvents> {
     const existing = await this.getEventsByInvitation(data.invitationId);
     if (existing) {
-      const [updated] = await db.update(invitationEvents).set(data).where(eq(invitationEvents.invitationId, data.invitationId)).returning();
+      const [updated] = await this.db.update(invitationEvents).set(data).where(eq(invitationEvents.invitationId, data.invitationId)).returning();
       return updated;
     }
-    const [created] = await db.insert(invitationEvents).values({ ...data, id: randomUUID() }).returning();
+    const [created] = await this.db.insert(invitationEvents).values({ ...data, id: randomUUID() }).returning();
     return created;
   }
 
   async getContentByInvitation(invId: string): Promise<InvitationContent | undefined> {
-    const [content] = await db.select().from(invitationContent).where(eq(invitationContent.invitationId, invId));
+    const [content] = await this.db.select().from(invitationContent).where(eq(invitationContent.invitationId, invId));
     return content;
   }
 
   async upsertContent(data: Omit<InvitationContent, "id">): Promise<InvitationContent> {
     const existing = await this.getContentByInvitation(data.invitationId);
     if (existing) {
-      const [updated] = await db.update(invitationContent).set(data).where(eq(invitationContent.invitationId, data.invitationId)).returning();
+      const [updated] = await this.db.update(invitationContent).set(data).where(eq(invitationContent.invitationId, data.invitationId)).returning();
       return updated;
     }
-    const [created] = await db.insert(invitationContent).values({ ...data, id: randomUUID() }).returning();
+    const [created] = await this.db.insert(invitationContent).values({ ...data, id: randomUUID() }).returning();
     return created;
   }
 
   async getGalleryByInvitation(invId: string): Promise<GalleryImage[]> {
-    return db.select().from(invitationGallery).where(eq(invitationGallery.invitationId, invId)).orderBy(invitationGallery.sortOrder);
+    return this.db.select().from(invitationGallery).where(eq(invitationGallery.invitationId, invId)).orderBy(invitationGallery.sortOrder);
   }
 
   async addGalleryImage(data: Omit<GalleryImage, "id" | "createdAt">): Promise<GalleryImage> {
-    const [img] = await db.insert(invitationGallery).values({ ...data, id: randomUUID() }).returning();
+    const [img] = await this.db.insert(invitationGallery).values({ ...data, id: randomUUID() }).returning();
     return img;
   }
 
   async deleteGalleryImage(id: string): Promise<void> {
-    await db.delete(invitationGallery).where(eq(invitationGallery.id, id));
+    await this.db.delete(invitationGallery).where(eq(invitationGallery.id, id));
   }
 
   async getRsvpsByInvitation(invId: string): Promise<Rsvp[]> {
-    return db.select().from(rsvps).where(eq(rsvps.invitationId, invId)).orderBy(desc(rsvps.createdAt));
+    return this.db.select().from(rsvps).where(eq(rsvps.invitationId, invId)).orderBy(desc(rsvps.createdAt));
   }
 
   async createRsvp(data: InsertRsvp): Promise<Rsvp> {
-    const [rsvp] = await db.insert(rsvps).values({ ...data, id: randomUUID() }).returning();
+    const [rsvp] = await this.db.insert(rsvps).values({ ...data, id: randomUUID() }).returning();
     return rsvp;
   }
 
   async getMessagesByInvitation(invId: string): Promise<GuestMessage[]> {
-    return db.select().from(guestMessages).where(and(eq(guestMessages.invitationId, invId), eq(guestMessages.isVisible, true))).orderBy(desc(guestMessages.createdAt));
+    return this.db.select().from(guestMessages).where(and(eq(guestMessages.invitationId, invId), eq(guestMessages.isVisible, true))).orderBy(desc(guestMessages.createdAt));
   }
 
   async getAllMessagesByInvitation(invId: string): Promise<GuestMessage[]> {
-    return db.select().from(guestMessages).where(eq(guestMessages.invitationId, invId)).orderBy(desc(guestMessages.createdAt));
+    return this.db.select().from(guestMessages).where(eq(guestMessages.invitationId, invId)).orderBy(desc(guestMessages.createdAt));
   }
 
   async createGuestMessage(data: InsertGuestMessage): Promise<GuestMessage> {
-    const [msg] = await db.insert(guestMessages).values({ ...data, id: randomUUID() }).returning();
+    const [msg] = await this.db.insert(guestMessages).values({ ...data, id: randomUUID() }).returning();
     return msg;
   }
 
   async updateMessageVisibility(id: string, visible: boolean): Promise<void> {
-    await db.update(guestMessages).set({ isVisible: visible }).where(eq(guestMessages.id, id));
+    await this.db.update(guestMessages).set({ isVisible: visible }).where(eq(guestMessages.id, id));
   }
 
   async getGiftAccountsByInvitation(invId: string): Promise<GiftAccount[]> {
-    return db.select().from(giftAccounts).where(eq(giftAccounts.invitationId, invId));
+    return this.db.select().from(giftAccounts).where(eq(giftAccounts.invitationId, invId));
   }
 
   async createGiftAccount(data: InsertGiftAccount): Promise<GiftAccount> {
-    const [gift] = await db.insert(giftAccounts).values({ ...data, id: randomUUID() }).returning();
+    const [gift] = await this.db.insert(giftAccounts).values({ ...data, id: randomUUID() }).returning();
     return gift;
   }
 
   async deleteGiftAccount(id: string): Promise<void> {
-    await db.delete(giftAccounts).where(eq(giftAccounts.id, id));
+    await this.db.delete(giftAccounts).where(eq(giftAccounts.id, id));
   }
 
   async getGiftConfirmationsByInvitation(invId: string): Promise<GiftConfirmation[]> {
-    return db.select().from(giftConfirmations).where(eq(giftConfirmations.invitationId, invId)).orderBy(desc(giftConfirmations.createdAt));
+    return this.db.select().from(giftConfirmations).where(eq(giftConfirmations.invitationId, invId)).orderBy(desc(giftConfirmations.createdAt));
   }
 
   async createGiftConfirmation(data: Omit<GiftConfirmation, "id" | "createdAt">): Promise<GiftConfirmation> {
-    const [conf] = await db.insert(giftConfirmations).values({ ...data, id: randomUUID() }).returning();
+    const [conf] = await this.db.insert(giftConfirmations).values({ ...data, id: randomUUID() }).returning();
     return conf;
   }
 
   async getUserStats(userId: string) {
     const userInvitations = await this.getInvitationsByUser(userId);
-    const invIds = userInvitations.map(i => i.id);
     let totalRsvp = 0, totalMessages = 0, totalViews = 0, attendingCount = 0;
     for (const inv of userInvitations) {
       totalViews += inv.views;
@@ -287,3 +291,7 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+export function createStorage(dbInstance?: DrizzleDB): DatabaseStorage {
+  return new DatabaseStorage(dbInstance);
+}

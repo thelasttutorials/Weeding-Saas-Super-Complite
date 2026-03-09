@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, createStorage } from "./storage";
+import { withUserContext } from "./db";
 import { insertUserSchema, insertInvitationSchema, insertRsvpSchema, insertGuestMessageSchema, insertGiftAccountSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import passport from "passport";
@@ -49,6 +50,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     })
   );
 
+  // Auth operations use the global storage (no user context yet, users table bypasses RLS)
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
@@ -76,7 +78,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Auth routes
+  // ── Auth routes (no user context needed) ────────────────────────────────────
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       const body = insertUserSchema.parse(req.body);
@@ -120,183 +123,239 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(safe);
   });
 
-  // Invitation routes
+  // ── Invitation routes (RLS-scoped) ───────────────────────────────────────────
+
   app.get("/api/invitations", requireAuth, async (req, res) => {
-    const invitations = await storage.getInvitationsByUser(userId(req));
-    res.json(invitations);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const list = await s.getInvitationsByUser(userId(req));
+      res.json(list);
+    });
   });
 
   app.post("/api/invitations", requireAuth, async (req, res) => {
     try {
       const data = insertInvitationSchema.parse({ ...req.body, userId: userId(req) });
-      const inv = await storage.createInvitation(data);
-      res.json(inv);
+      await withUserContext(userId(req), async (userDb) => {
+        const s = createStorage(userDb);
+        const inv = await s.createInvitation(data);
+        res.json(inv);
+      });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
   });
 
   app.get("/api/invitations/:id", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    res.json(inv);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(inv);
+    });
   });
 
   app.patch("/api/invitations/:id", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const updated = await storage.updateInvitation(req.params.id, req.body);
-    res.json(updated);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      const updated = await s.updateInvitation(req.params.id, req.body);
+      res.json(updated);
+    });
   });
 
   app.delete("/api/invitations/:id", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    await storage.deleteInvitation(req.params.id);
-    res.json({ success: true });
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      await s.deleteInvitation(req.params.id);
+      res.json({ success: true });
+    });
   });
 
-  // Builder detail routes
+  // ── Builder detail routes (RLS-scoped) ──────────────────────────────────────
+
   app.get("/api/invitations/:id/couple", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const couple = await storage.getCoupleByInvitation(req.params.id);
-    res.json(couple || {});
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getCoupleByInvitation(req.params.id) || {});
+    });
   });
 
   app.put("/api/invitations/:id/couple", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const couple = await storage.upsertCouple({ ...req.body, invitationId: req.params.id });
-    res.json(couple);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.upsertCouple({ ...req.body, invitationId: req.params.id }));
+    });
   });
 
   app.get("/api/invitations/:id/events", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const events = await storage.getEventsByInvitation(req.params.id);
-    res.json(events || {});
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getEventsByInvitation(req.params.id) || {});
+    });
   });
 
   app.put("/api/invitations/:id/events", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const events = await storage.upsertEvents({ ...req.body, invitationId: req.params.id });
-    res.json(events);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.upsertEvents({ ...req.body, invitationId: req.params.id }));
+    });
   });
 
   app.get("/api/invitations/:id/content", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const content = await storage.getContentByInvitation(req.params.id);
-    res.json(content || {});
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getContentByInvitation(req.params.id) || {});
+    });
   });
 
   app.put("/api/invitations/:id/content", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const content = await storage.upsertContent({ ...req.body, invitationId: req.params.id });
-    res.json(content);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.upsertContent({ ...req.body, invitationId: req.params.id }));
+    });
   });
 
   app.get("/api/invitations/:id/gallery", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const gallery = await storage.getGalleryByInvitation(req.params.id);
-    res.json(gallery);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getGalleryByInvitation(req.params.id));
+    });
   });
 
   app.post("/api/invitations/:id/gallery", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const img = await storage.addGalleryImage({ ...req.body, invitationId: req.params.id });
-    res.json(img);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.addGalleryImage({ ...req.body, invitationId: req.params.id }));
+    });
   });
 
   app.delete("/api/invitations/:id/gallery/:imageId", requireAuth, async (req, res) => {
-    await storage.deleteGalleryImage(req.params.imageId);
-    res.json({ success: true });
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      await s.deleteGalleryImage(req.params.imageId);
+      res.json({ success: true });
+    });
   });
 
-  // RSVP routes
+  // ── RSVP / Messages / Gifts (RLS-scoped) ────────────────────────────────────
+
   app.get("/api/invitations/:id/rsvps", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const rsvpList = await storage.getRsvpsByInvitation(req.params.id);
-    res.json(rsvpList);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getRsvpsByInvitation(req.params.id));
+    });
   });
 
-  // Guest messages routes
   app.get("/api/invitations/:id/messages", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const messages = await storage.getAllMessagesByInvitation(req.params.id);
-    res.json(messages);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getAllMessagesByInvitation(req.params.id));
+    });
   });
 
   app.patch("/api/messages/:id/visibility", requireAuth, async (req, res) => {
-    await storage.updateMessageVisibility(req.params.id, req.body.visible);
-    res.json({ success: true });
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      await s.updateMessageVisibility(req.params.id, req.body.visible);
+      res.json({ success: true });
+    });
   });
 
-  // Gift routes
   app.get("/api/invitations/:id/gifts", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const gifts = await storage.getGiftAccountsByInvitation(req.params.id);
-    res.json(gifts);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getGiftAccountsByInvitation(req.params.id));
+    });
   });
 
   app.post("/api/invitations/:id/gifts", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
     try {
       const data = insertGiftAccountSchema.parse({ ...req.body, invitationId: req.params.id });
-      const gift = await storage.createGiftAccount(data);
-      res.json(gift);
+      await withUserContext(userId(req), async (userDb) => {
+        const s = createStorage(userDb);
+        const inv = await s.getInvitationById(req.params.id);
+        if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+        res.json(await s.createGiftAccount(data));
+      });
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
   });
 
   app.delete("/api/gifts/:id", requireAuth, async (req, res) => {
-    await storage.deleteGiftAccount(req.params.id);
-    res.json({ success: true });
-  });
-
-  // Gift confirmations
-  app.get("/api/invitations/:id/gift-confirmations", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const confs = await storage.getGiftConfirmationsByInvitation(req.params.id);
-    res.json(confs);
-  });
-
-  // Stats
-  app.get("/api/stats", requireAuth, async (req, res) => {
-    const stats = await storage.getUserStats(userId(req));
-    res.json(stats);
-  });
-
-  // Analytics per invitation
-  app.get("/api/invitations/:id/analytics", requireAuth, async (req, res) => {
-    const inv = await storage.getInvitationById(req.params.id);
-    if (!inv || inv.userId !== userId(req)) return res.status(404).json({ message: "Not found" });
-    const rsvpList = await storage.getRsvpsByInvitation(req.params.id);
-    const msgs = await storage.getAllMessagesByInvitation(req.params.id);
-    const confs = await storage.getGiftConfirmationsByInvitation(req.params.id);
-    res.json({
-      views: inv.views,
-      totalRsvp: rsvpList.length,
-      attending: rsvpList.filter(r => r.status === "attending").length,
-      notAttending: rsvpList.filter(r => r.status === "not_attending").length,
-      pending: rsvpList.filter(r => r.status === "pending").length,
-      messages: msgs.length,
-      giftConfirmations: confs.length,
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      await s.deleteGiftAccount(req.params.id);
+      res.json({ success: true });
     });
   });
 
-  // User profile update
+  app.get("/api/invitations/:id/gift-confirmations", requireAuth, async (req, res) => {
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getGiftConfirmationsByInvitation(req.params.id));
+    });
+  });
+
+  // ── Stats & Analytics (RLS-scoped) ──────────────────────────────────────────
+
+  app.get("/api/stats", requireAuth, async (req, res) => {
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      res.json(await s.getUserStats(userId(req)));
+    });
+  });
+
+  app.get("/api/invitations/:id/analytics", requireAuth, async (req, res) => {
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      const rsvpList = await s.getRsvpsByInvitation(req.params.id);
+      const msgs = await s.getAllMessagesByInvitation(req.params.id);
+      const confs = await s.getGiftConfirmationsByInvitation(req.params.id);
+      res.json({
+        views: inv.views,
+        totalRsvp: rsvpList.length,
+        attending: rsvpList.filter(r => r.status === "attending").length,
+        notAttending: rsvpList.filter(r => r.status === "not_attending").length,
+        pending: rsvpList.filter(r => r.status === "pending").length,
+        messages: msgs.length,
+        giftConfirmations: confs.length,
+      });
+    });
+  });
+
+  // ── User profile (users table is not FORCE RLS, global storage is fine) ──────
+
   app.patch("/api/users/me", requireAuth, async (req, res) => {
     const updated = await storage.updateUser(userId(req), {
       fullName: req.body.fullName,
@@ -317,7 +376,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ success: true });
   });
 
-  // Public invitation page routes (no auth needed)
+  // ── Public invitation routes (no auth, RLS allows published data) ────────────
+
   app.get("/api/public/:slug", async (req, res) => {
     const inv = await storage.getFullInvitationBySlug(req.params.slug);
     if (!inv || inv.status !== "published") return res.status(404).json({ message: "Invitation not found" });
@@ -330,8 +390,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const inv = await storage.getInvitationBySlug(req.params.slug);
       if (!inv || inv.status !== "published") return res.status(404).json({ message: "Not found" });
       const data = insertRsvpSchema.parse({ ...req.body, invitationId: inv.id });
-      const rsvp = await storage.createRsvp(data);
-      res.json(rsvp);
+      res.json(await storage.createRsvp(data));
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
@@ -342,8 +401,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const inv = await storage.getInvitationBySlug(req.params.slug);
       if (!inv || inv.status !== "published") return res.status(404).json({ message: "Not found" });
       const data = insertGuestMessageSchema.parse({ ...req.body, invitationId: inv.id });
-      const msg = await storage.createGuestMessage(data);
-      res.json(msg);
+      res.json(await storage.createGuestMessage(data));
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
@@ -352,16 +410,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/public/:slug/messages", async (req, res) => {
     const inv = await storage.getInvitationBySlug(req.params.slug);
     if (!inv || inv.status !== "published") return res.status(404).json({ message: "Not found" });
-    const messages = await storage.getMessagesByInvitation(inv.id);
-    res.json(messages);
+    res.json(await storage.getMessagesByInvitation(inv.id));
   });
 
   app.post("/api/public/:slug/gift-confirmation", async (req, res) => {
     try {
       const inv = await storage.getInvitationBySlug(req.params.slug);
       if (!inv || inv.status !== "published") return res.status(404).json({ message: "Not found" });
-      const conf = await storage.createGiftConfirmation({ ...req.body, invitationId: inv.id });
-      res.json(conf);
+      res.json(await storage.createGiftConfirmation({ ...req.body, invitationId: inv.id }));
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
