@@ -1,0 +1,299 @@
+Project ini saat ini hanya berupa UI prototype dan hampir semua fitur tidak berfungsi.
+
+Saya ingin kamu melakukan refactor besar agar aplikasi ini benar-benar bekerja secara nyata.
+
+Tujuan utama:
+Ubah seluruh project dari UI demo menjadi aplikasi SaaS yang benar-benar berjalan end-to-end menggunakan Supabase.
+
+Fokus utama adalah functionality, bukan dekorasi UI.
+
+==================================================
+LANGKAH 1 - AUDIT PROJECT
+==================================================
+
+Audit seluruh project dan identifikasi:
+
+- fitur yang hanya UI
+- fitur yang masih dummy
+- form yang tidak benar-benar submit
+- list/table yang tidak membaca database
+- chart/statistik yang palsu
+- tombol yang tidak punya action
+- upload yang tidak benar-benar upload
+- halaman yang membaca mock data
+
+Buat laporan:
+
+1. fitur yang benar-benar mati
+2. file yang menyebabkan fitur mati
+3. logic yang harus diubah
+
+Jangan langsung memperbaiki semuanya.
+Audit dulu.
+
+==================================================
+LANGKAH 2 - HAPUS SEMUA MOCK DAN DUMMY LOGIC
+==================================================
+
+Cari dan hapus:
+
+- mock services
+- dummy state
+- fake submit handler
+- placeholder logic
+- fake chart data
+- fake stats
+- hardcoded demo data
+
+Jika UI bergantung pada dummy data, refactor agar membaca database.
+
+Jangan biarkan UI menampilkan data palsu.
+
+==================================================
+LANGKAH 3 - AKTIFKAN SUPABASE AUTH
+==================================================
+
+Aktifkan authentication menggunakan Supabase Auth.
+
+Harus bekerja nyata:
+
+- register user
+- login user
+- logout
+- session persistence
+- redirect setelah login
+- proteksi route dashboard
+- tampilkan data user di account page
+
+Tambahkan role system:
+
+roles:
+- user
+- admin
+
+Simpan role di database.
+
+==================================================
+LANGKAH 4 - AKTIFKAN DATABASE FLOW
+==================================================
+
+Hubungkan semua fitur utama ke Supabase database.
+
+Gunakan tabel berikut:
+
+profiles
+invitations
+invitation_couples
+invitation_events
+invitation_gallery
+rsvps
+guest_messages
+gift_accounts
+gift_confirmations
+subscriptions
+white_label_settings
+
+Pastikan relasi data benar:
+
+user → invitations
+invitation → rsvps
+invitation → guest_messages
+invitation → gallery
+invitation → gift_accounts
+
+Semua query harus scoped ke user yang login.
+
+==================================================
+LANGKAH 5 - AKTIFKAN INVITATION CRUD
+==================================================
+
+Aktifkan flow berikut:
+
+create invitation
+edit invitation
+update invitation
+delete invitation
+
+Data harus benar-benar disimpan ke database.
+
+Validasi:
+
+slug harus unik.
+
+==================================================
+LANGKAH 6 - AKTIFKAN PUBLISH SYSTEM
+==================================================
+
+Implement publish system.
+
+Status invitation:
+
+draft
+published
+
+Halaman publik hanya boleh diakses jika status published.
+
+Tambahkan validasi sebelum publish.
+
+==================================================
+LANGKAH 7 - AKTIFKAN PUBLIC INVITATION PAGE
+==================================================
+
+Route:
+
+/invite/[slug]
+
+Halaman ini harus:
+
+- membaca data invitation dari database
+- menampilkan data pasangan
+- menampilkan acara
+- menampilkan galeri
+- menampilkan gift info
+- menampilkan RSVP
+- menampilkan guest messages
+
+Jika slug tidak ditemukan tampilkan not found.
+
+Tambahkan dukungan query:
+
+?to=NamaTamu
+
+==================================================
+LANGKAH 8 - AKTIFKAN RSVP
+==================================================
+
+RSVP harus benar-benar aktif.
+
+Form:
+
+name
+whatsapp
+guest_count
+status
+message
+
+Submit ke database.
+
+Dashboard harus membaca data RSVP nyata.
+
+==================================================
+LANGKAH 9 - AKTIFKAN GUEST MESSAGES
+==================================================
+
+Guest messages harus aktif.
+
+Public:
+form ucapan tamu
+
+Dashboard:
+- lihat message
+- hide message
+- filter message
+
+==================================================
+LANGKAH 10 - AKTIFKAN DIGITAL GIFT
+==================================================
+
+Dashboard user:
+
+tambah rekening bank
+tambah ewallet
+
+Public invitation page harus membaca data ini.
+
+Tambahkan gift confirmation form.
+
+==================================================
+LANGKAH 11 - AKTIFKAN GALLERY UPLOAD
+==================================================
+
+Upload image harus benar-benar upload ke Supabase Storage.
+
+Flow:
+
+upload
+save URL ke database
+tampilkan gallery
+delete image
+
+==================================================
+LANGKAH 12 - AKTIFKAN ADMIN PANEL
+==================================================
+
+Admin panel harus membaca data nyata.
+
+Admin dapat melihat:
+
+total users
+total invitations
+total RSVP
+total messages
+
+Admin dapat melihat:
+
+list users
+list invitations
+subscription status
+
+Non-admin tidak boleh membuka admin panel.
+
+==================================================
+LANGKAH 13 - PERBAIKI SEMUA ACTION UI
+==================================================
+
+Audit seluruh UI:
+
+setiap tombol
+setiap form
+setiap dropdown
+
+Pastikan semuanya memiliki action nyata.
+
+Jika ada tombol yang tidak memiliki logic:
+
+aktifkan sekarang
+atau sembunyikan sementara.
+
+==================================================
+LANGKAH 14 - PERBAIKI DASHBOARD STATS
+==================================================
+
+Dashboard stats harus membaca data nyata.
+
+Stat:
+
+total invitations
+total RSVP
+attendance rate
+total messages
+
+Jangan tampilkan angka palsu.
+
+==================================================
+LANGKAH 15 - FINAL CLEANUP
+==================================================
+
+Pastikan:
+
+tidak ada dummy data
+tidak ada mock service
+tidak ada tombol palsu
+tidak ada chart palsu
+tidak ada fitur UI tanpa logic
+
+==================================================
+OUTPUT YANG DIINGINKAN
+==================================================
+
+Setelah refactor selesai tampilkan:
+
+1. daftar file yang diperbaiki
+2. fitur yang sekarang aktif
+3. fitur yang masih placeholder jika ada
+4. flow user yang aktif
+5. flow admin yang aktif
+6. kode final
+
+Prioritas utama:
+membuat aplikasi ini benar-benar berjalan.

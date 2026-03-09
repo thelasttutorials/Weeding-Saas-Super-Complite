@@ -1,0 +1,581 @@
+Buatkan aplikasi fullstack production-ready bernama "WedSaaS Admin" untuk platform undangan pernikahan digital. Gunakan stack: Next.js terbaru (App Router), TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, NextAuth/Auth.js, Zod, TanStack Table, TanStack Query, dan Recharts. Struktur project harus rapi, scalable, reusable, dan benar-benar berfungsi end-to-end.
+
+Konteks bisnis:
+Website public WedSaaS adalah landing page SaaS undangan pernikahan digital dengan section:
+- Hero
+- Fitur
+- Cara Kerja
+- Tema
+- Harga
+- Testimoni
+- FAQ
+- CTA
+- Footer
+
+Saya ingin dibuatkan Admin Panel lengkap untuk mengelola semua isi landing page dan seluruh data bisnis platform.
+
+Tujuan utama sistem admin:
+1. Mengelola isi landing page
+2. Mengelola paket harga
+3. Mengelola tema undangan
+4. Mengelola testimoni
+5. Mengelola FAQ
+6. Mengelola user/pelanggan
+7. Mengelola undangan milik user
+8. Mengelola pembayaran/subscription
+9. Melihat dashboard statistik
+10. Mengelola pengaturan website
+11. Mengelola SEO
+12. Mengelola role admin
+13. Menyediakan autentikasi admin yang aman
+14. Menyediakan audit log aksi admin
+
+Role dan akses:
+- SUPER_ADMIN: akses penuh semua fitur, kelola admin lain, kelola setting sensitif
+- ADMIN: kelola konten, user, undangan, paket, tema, testimoni, FAQ, pembayaran, analytics
+- EDITOR: hanya kelola konten landing page, testimoni, FAQ
+Semua route admin harus dicek berdasarkan role.
+
+Autentikasi:
+- Buat halaman /admin/login
+- Login email + password
+- Password di-hash dengan bcrypt
+- Gunakan NextAuth/Auth.js
+- Jika belum login, semua route /admin/* redirect ke login
+- Jika role tidak sesuai, tampilkan unauthorized page
+- Sediakan logout
+- Session harus aman
+
+Layout admin:
+- Responsive admin layout
+- Sidebar, topbar, breadcrumb, profile dropdown
+- Mobile sidebar collapsible
+- Optional dark mode
+Menu sidebar:
+- Dashboard
+- Konten Landing Page
+- Paket Harga
+- Tema
+- Testimoni
+- FAQ
+- User / Pelanggan
+- Undangan
+- Pembayaran
+- Analytics
+- Media / Upload
+- Admin Management
+- Pengaturan Website
+- SEO
+- Audit Logs
+- Logout
+
+Dashboard admin /admin/dashboard:
+Tampilkan cards statistik:
+- Total user
+- Total undangan
+- Total undangan aktif
+- Total pelanggan premium
+- Total pendapatan
+- Total testimoni
+- Total FAQ
+- Total tema
+Tampilkan charts:
+- pertumbuhan user per bulan
+- pertumbuhan undangan per bulan
+- revenue per bulan
+- conversion free ke premium
+Tampilkan tabel ringkas:
+- 5 user terbaru
+- 5 undangan terbaru
+- 5 pembayaran terbaru
+Quick actions:
+- Tambah paket
+- Tambah tema
+- Tambah FAQ
+- Tambah testimoni
+- Tambah user
+- Tambah admin
+
+Modul Konten Landing Page /admin/content:
+Buat CMS sederhana per section.
+A. Hero Section
+Field:
+- badgeText
+- headlineLine1
+- headlineLine2
+- subheadline
+- primaryButtonText
+- primaryButtonLink
+- secondaryButtonText
+- secondaryButtonLink
+- highlight1
+- highlight2
+- highlight3
+- isActive
+
+B. Fitur Section
+CRUD feature items:
+- icon
+- title
+- description
+- sortOrder
+- isActive
+
+C. Cara Kerja Section
+CRUD step:
+- stepNumber
+- icon
+- title
+- description
+- sortOrder
+
+D. Tema Preview Section
+CRUD:
+- name
+- subtitle
+- thumbnail
+- dominantColor
+- isPremium
+- isActive
+- sortOrder
+
+E. Pricing Section
+Section setting:
+- sectionBadge
+- sectionTitle
+- sectionSubtitle
+
+F. Testimoni Section
+Terhubung ke module testimonials
+
+G. FAQ Section
+Terhubung ke module FAQs
+
+H. CTA Section
+- badgeOrIcon
+- headline
+- description
+- primaryCtaText
+- primaryCtaLink
+- secondaryCtaText
+- secondaryCtaLink
+
+I. Footer
+- logoText
+- description
+- copyrightText
+- privacyLink
+- termsLink
+- contactLink
+- socialLinks
+
+Semua perubahan harus tersimpan ke database dan otomatis tampil di landing page public.
+
+Modul Paket Harga /admin/pricing:
+Fitur:
+- list paket
+- tambah paket
+- edit paket
+- hapus paket
+- aktif/nonaktif
+- tandai paling populer
+Field paket:
+- name
+- slug
+- shortDescription
+- price
+- billingType (one_time, monthly, yearly)
+- priceLabel
+- badgeText
+- highlightColor
+- sortOrder
+- isActive
+- isPopular
+- ctaText
+- ctaLink
+Setiap paket punya banyak fitur:
+- featureName
+- included
+- sortOrder
+
+Modul Tema /admin/themes:
+Fitur:
+- CRUD tema
+- upload thumbnail
+- preview card
+- filter free/premium
+- aktif/nonaktif
+Field:
+- name
+- slug
+- category
+- description
+- thumbnail
+- previewImage
+- primaryColor
+- secondaryColor
+- titleFont
+- bodyFont
+- isPremium
+- isActive
+- sortOrder
+Tambahkan indikator jika tema dipakai banyak user dan tombol preview.
+
+Modul Testimoni /admin/testimonials:
+Fitur:
+- CRUD
+- publish/unpublish
+- search
+- sort
+Field:
+- coupleName
+- avatarInitials
+- testimonialText
+- rating
+- weddingDateLabel
+- photo
+- sortOrder
+- isPublished
+
+Modul FAQ /admin/faqs:
+Fitur:
+- CRUD
+- sort order
+- publish/unpublish
+Field:
+- question
+- answer
+- category
+- sortOrder
+- isActive
+
+Modul Users /admin/users:
+Fitur:
+- list users
+- search
+- filter paket
+- filter status
+- detail user
+- suspend/activate user
+- edit user basic data
+Field:
+- name
+- email
+- whatsapp
+- activePlan
+- accountStatus
+- registeredAt
+- totalInvitations
+- lastLoginAt
+Detail user harus menampilkan:
+- profile
+- daftar undangan
+- payment status
+- riwayat subscription
+
+Modul Undangan /admin/invitations:
+Fitur:
+- list semua undangan
+- search
+- filter status
+- filter theme
+- filter package
+- detail undangan
+- publish/unpublish
+- activate/deactivate
+- soft delete
+Field:
+- brideName
+- groomName
+- slug
+- ownerUser
+- theme
+- eventDate
+- location
+- status (draft, published, expired, archived)
+- guestCount
+- totalRsvp
+- totalViews
+- createdAt
+Detail undangan menampilkan:
+- info mempelai
+- jadwal acara
+- galeri
+- RSVP summary
+- pesan tamu
+- hadiah digital
+- analytics sederhana
+
+Modul Pembayaran /admin/payments:
+Fitur:
+- list pembayaran
+- filter status
+- filter paket
+- search by user/email/invoice
+- detail pembayaran
+- update status manual untuk demo
+Field:
+- invoiceNumber
+- user
+- plan
+- amount
+- paymentMethod
+- status (pending, paid, failed, expired, refunded)
+- paymentDate
+- createdAt
+
+Subscription:
+- activePlan
+- startDate
+- endDate
+- renewalStatus
+- subscriptionStatus
+
+Modul Analytics /admin/analytics:
+Tampilkan:
+- total visitor landing page
+- total conversion signup
+- total upgrade premium
+- total undangan publish
+- total RSVP masuk
+- total pesan tamu
+- total gift registry submissions
+Grafik:
+- visitor trend
+- revenue trend
+- most used themes
+- most selected packages
+Tabel:
+- top active users
+- top performing themes
+- top selected packages
+
+Modul Media /admin/media:
+Fitur:
+- upload image
+- preview image
+- delete image
+- copy image URL
+- filter by mime/type
+- pagination
+Field:
+- filename
+- originalName
+- mimeType
+- size
+- pathOrUrl
+- uploadedBy
+- createdAt
+
+Modul Admin Management /admin/admins:
+Hanya SUPER_ADMIN
+Fitur:
+- list admin
+- tambah admin
+- edit admin
+- reset password
+- ubah role
+- nonaktifkan admin
+Field:
+- name
+- email
+- password
+- role
+- isActive
+
+Modul Pengaturan Website /admin/settings:
+Tab General:
+- siteName
+- tagline
+- logo
+- favicon
+- supportEmail
+- supportWhatsapp
+- businessAddress
+Tab Branding:
+- primaryColor
+- secondaryColor
+- defaultButtonStyle
+Tab System:
+- maintenanceMode
+- registrationEnabled
+- trialEnabled
+Tab Legal:
+- privacyPolicy
+- termsConditions
+
+Modul SEO /admin/seo:
+Field:
+- homepageMetaTitle
+- homepageMetaDescription
+- homepageMetaKeywords
+- ogTitle
+- ogDescription
+- ogImage
+- twitterCard
+- canonicalUrl
+Tambahkan dukungan SEO dasar untuk homepage.
+
+Audit Log /admin/logs:
+Catat aksi admin:
+- login
+- logout
+- create
+- update
+- delete
+- publish
+- unpublish
+- suspend
+- role change
+Field:
+- adminId
+- action
+- entity
+- entityId
+- description
+- createdAt
+
+Database:
+Gunakan Prisma dengan PostgreSQL.
+Buat schema lengkap dan relasi masuk akal minimal untuk entity:
+- Admin
+- User
+- HeroSection
+- FeatureItem
+- HowItWorksStep
+- Theme
+- PricingPlan
+- PricingPlanFeature
+- Testimonial
+- FAQ
+- Invitation
+- RSVP
+- GuestMessage
+- GiftRegistry
+- Payment
+- Subscription
+- Media
+- WebsiteSetting
+- SEOSetting
+- AuditLog
+- LandingPageSetting jika diperlukan
+Gunakan enum untuk role, status, billingType, invitationStatus, paymentStatus, subscriptionStatus.
+
+Landing page public:
+Halaman public harus mengambil data dari database, bukan hardcoded.
+Section yang wajib dinamis:
+- Hero
+- Fitur
+- Cara Kerja
+- Tema
+- Harga
+- Testimoni
+- FAQ
+- CTA
+- Footer
+
+UI/UX:
+Gunakan shadcn/ui dan Tailwind.
+Buat UI admin yang:
+- modern
+- clean
+- profesional
+- responsif
+- reusable
+Gunakan reusable components:
+- DataTable
+- Form components
+- Confirm Dialog
+- ImageUploader
+- EmptyState
+- StatsCard
+- Breadcrumbs
+- FilterBar
+- SearchInput
+- PaginatedTable
+- Loading skeleton
+- Toast notification
+
+Semua CRUD wajib benar-benar berfungsi:
+- create
+- read
+- update
+- delete
+- pagination
+- search
+- filter
+- sorting
+- form validation
+- loading state
+- empty state
+- confirm delete modal
+- error handling yang jelas
+- toast success/error
+
+Validation dan keamanan:
+- Gunakan Zod di server dan client seperlunya
+- Sanitize input bila perlu
+- Gunakan middleware untuk proteksi /admin
+- Buat helper RBAC
+- Gunakan typed actions/API
+- Jangan ada hardcoded sensitive secret
+- Siapkan .env.example
+
+Seed data:
+Buat seed data siap pakai:
+Admin demo:
+- superadmin@wedsaas.com / password123
+- admin@wedsaas.com / password123
+- editor@wedsaas.com / password123
+Data awal:
+- 3 paket: Free, Premium, Business
+- 4 tema: Classic Elegant, Minimal Modern, Romantic Floral, Luxury Gold
+- 3 testimoni
+- 5 FAQ
+- beberapa user dummy
+- beberapa undangan dummy
+- beberapa pembayaran dummy
+
+Keluaran yang saya inginkan:
+1. Struktur folder project lengkap
+2. Prisma schema lengkap
+3. Migration
+4. Seed data
+5. API routes atau server actions lengkap
+6. Semua halaman admin lengkap
+7. Semua form CRUD lengkap
+8. Landing page public terhubung database
+9. Middleware auth + RBAC
+10. Komponen reusable
+11. .env.example
+12. Petunjuk setup project
+13. Code yang clean, typed, dan siap jalan
+
+Kriteria penting:
+- Jangan buat dummy setengah jadi
+- Semua fitur harus terhubung end-to-end
+- Semua form submit harus benar-benar menyimpan ke database
+- Edit dan delete harus jalan
+- Query efisien
+- Kode maintainable
+- Gunakan best practice Next.js App Router
+- Pastikan project bisa dijalankan di Replit tanpa banyak perubahan
+
+Tolong kerjakan bertahap namun lengkap:
+Langkah 1: generate struktur project dan dependency
+Langkah 2: buat Prisma schema dan database setup
+Langkah 3: buat auth dan middleware proteksi admin
+Langkah 4: buat admin layout dan komponen reusable
+Langkah 5: buat dashboard
+Langkah 6: buat semua module CRUD admin
+Langkah 7: hubungkan landing page public ke database
+Langkah 8: buat seed data
+Langkah 9: pastikan semua route dan fitur berfungsi
+Langkah 10: berikan instruksi final setup dan run
+
+Saat menghasilkan code:
+- tampilkan file per file
+- jangan lompat
+- sertakan isi file lengkap
+- prioritaskan kode yang langsung jalan
+- kalau ada keputusan arsitektur, pilih yang paling stabil dan sederhana untuk production
