@@ -14,6 +14,7 @@ import {
   insertTestimonialSchema, insertFaqSchema, insertPricingPlanSchema, insertWebsiteSettingsSchema, insertSeoSettingsSchema,
   insertPricingPlanFeatureSchema, insertWeddingThemeSchema, insertWeddingThemeBlockSchema
 } from "@shared/schema";
+
 import bcrypt from "bcrypt";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -24,6 +25,28 @@ import { Pool } from "pg";
 function userId(req: Request): string {
   return (req.user as Express.User).id;
 }
+
+// ── Payment helpers ───────────────────────────────────────────────────────────
+function generateInvoiceNumber(): string {
+  const d = new Date();
+  const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `INV-${date}-${rand}`;
+}
+
+async function generateUniqueCode(amount: number): Promise<number> {
+  for (let i = 0; i < 20; i++) {
+    const code = Math.floor(Math.random() * 900) + 100; // 100–999
+    const conflict = await storage.getUniqueCodeConflict(amount, code);
+    if (!conflict) return code;
+  }
+  return Math.floor(Math.random() * 900) + 100;
+}
+
+const PLAN_AMOUNTS: Record<string, number> = {
+  premium: 99000,
+  business: 299000,
+};
 
 const PgSession = connectPgSimple(session);
 
@@ -924,6 +947,175 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
+  });
+
+  // ── Bank accounts ──────────────────────────────────────────────────────────
+
+  app.get("/api/bank-accounts", async (_req, res) => {
+    res.json(await storage.getBankAccounts(true));
+  });
+
+  // Admin bank account management
+  app.get("/api/admin/bank-accounts", requireAdmin, async (_req, res) => {
+    res.json(await storage.getBankAccounts());
+  });
+
+  app.post("/api/admin/bank-accounts", requireAdmin, async (req, res) => {
+    const data = req.body;
+    if (!data.bankName || !data.accountName || !data.accountNumber) {
+      return res.status(400).json({ message: "bankName, accountName, accountNumber required" });
+    }
+    res.status(201).json(await storage.createBankAccount(data));
+  });
+
+  app.patch("/api/admin/bank-accounts/:id", requireAdmin, async (req, res) => {
+    const account = await storage.updateBankAccount(req.params.id, req.body);
+    if (!account) return res.status(404).json({ message: "Not found" });
+    res.json(account);
+  });
+
+  app.delete("/api/admin/bank-accounts/:id", requireAdmin, async (req, res) => {
+    await storage.deleteBankAccount(req.params.id);
+    res.json({ success: true });
+  });
+
+  // ── Payment invoices ───────────────────────────────────────────────────────
+
+  // Create invoice (user)
+  app.post("/api/payments", requireAuth, async (req, res) => {
+    const { plan } = req.body;
+    if (!plan || !PLAN_AMOUNTS[plan]) {
+      return res.status(400).json({ message: "Plan tidak valid. Pilih premium atau business." });
+    }
+    // Expire any overdue invoices first
+    await storage.expireOverduePayments();
+    // Check for existing active invoice for this user/plan
+    const existingPayments = await storage.getPaymentsByUser(userId(req));
+    const activeInvoice = existingPayments.find(p =>
+      p.plan === plan && (p.status === "pending" || p.status === "waiting_confirmation")
+    );
+    if (activeInvoice) {
+      return res.status(409).json({
+        message: "Kamu sudah memiliki invoice aktif untuk paket ini.",
+        paymentId: activeInvoice.id,
+      });
+    }
+    const amount = PLAN_AMOUNTS[plan];
+    const uniqueCode = await generateUniqueCode(amount);
+    const finalAmount = amount + uniqueCode;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const payment = await storage.createPayment({
+      userId: userId(req),
+      plan,
+      invoiceNumber: generateInvoiceNumber(),
+      amount,
+      uniqueCode,
+      finalAmount,
+      paymentMethod: "bank_transfer",
+      status: "pending",
+      expiresAt,
+    });
+    res.status(201).json(payment);
+  });
+
+  // Get user's payment list
+  app.get("/api/payments", requireAuth, async (req, res) => {
+    await storage.expireOverduePayments();
+    res.json(await storage.getPaymentsByUser(userId(req)));
+  });
+
+  // Get single payment detail (owner or admin)
+  app.get("/api/payments/:id", requireAuth, async (req, res) => {
+    await storage.expireOverduePayments();
+    const payment = await storage.getPaymentById(req.params.id);
+    if (!payment) return res.status(404).json({ message: "Not found" });
+    const user = req.user as Express.User;
+    if (payment.userId !== user.id && !user.isAdmin) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    res.json(payment);
+  });
+
+  // Submit transfer proof URL
+  app.patch("/api/payments/:id/proof", requireAuth, async (req, res) => {
+    const payment = await storage.getPaymentById(req.params.id);
+    if (!payment) return res.status(404).json({ message: "Not found" });
+    if (payment.userId !== userId(req)) return res.status(403).json({ message: "Forbidden" });
+    if (payment.status === "paid" || payment.status === "expired" || payment.status === "canceled") {
+      return res.status(400).json({ message: "Invoice tidak dapat diubah." });
+    }
+    if (!req.body.transferProofUrl) {
+      return res.status(400).json({ message: "URL bukti transfer wajib diisi." });
+    }
+    const updated = await storage.updatePayment(payment.id, {
+      transferProofUrl: req.body.transferProofUrl,
+      status: "waiting_confirmation",
+    });
+    res.json(updated);
+  });
+
+  // Cancel payment (user)
+  app.patch("/api/payments/:id/cancel", requireAuth, async (req, res) => {
+    const payment = await storage.getPaymentById(req.params.id);
+    if (!payment) return res.status(404).json({ message: "Not found" });
+    if (payment.userId !== userId(req)) return res.status(403).json({ message: "Forbidden" });
+    if (payment.status !== "pending") {
+      return res.status(400).json({ message: "Hanya invoice pending yang bisa dibatalkan." });
+    }
+    res.json(await storage.updatePayment(payment.id, { status: "canceled" }));
+  });
+
+  // Admin: get all payments
+  app.get("/api/admin/payments", requireAdmin, async (req, res) => {
+    await storage.expireOverduePayments();
+    const { status, search } = req.query as { status?: string; search?: string };
+    res.json(await storage.getAdminPayments({ status, search }));
+  });
+
+  // Admin: approve payment
+  app.post("/api/admin/payments/:id/approve", requireAdmin, async (req, res) => {
+    const payment = await storage.getPaymentById(req.params.id);
+    if (!payment) return res.status(404).json({ message: "Not found" });
+    if (payment.status === "paid") return res.status(400).json({ message: "Already approved." });
+
+    // Mark as paid
+    const updated = await storage.updatePayment(payment.id, {
+      status: "paid",
+      paidAt: new Date(),
+      adminNotes: req.body.notes || null,
+    });
+    // Update user plan
+    await storage.updateUser(payment.userId, { plan: payment.plan });
+    // Log audit
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "PAYMENT_APPROVED",
+      entity: "payment",
+      entityId: payment.id,
+      description: `Approved ${payment.invoiceNumber} — plan ${payment.plan} — Rp ${payment.finalAmount.toLocaleString()}`,
+    });
+    res.json(updated);
+  });
+
+  // Admin: reject payment
+  app.post("/api/admin/payments/:id/reject", requireAdmin, async (req, res) => {
+    const payment = await storage.getPaymentById(req.params.id);
+    if (!payment) return res.status(404).json({ message: "Not found" });
+    if (!req.body.reason) return res.status(400).json({ message: "Alasan penolakan wajib diisi." });
+
+    const updated = await storage.updatePayment(payment.id, {
+      status: "rejected",
+      rejectedReason: req.body.reason,
+      adminNotes: req.body.notes || null,
+    });
+    await storage.createAuditLog({
+      adminId: userId(req),
+      action: "PAYMENT_REJECTED",
+      entity: "payment",
+      entityId: payment.id,
+      description: `Rejected ${payment.invoiceNumber} — reason: ${req.body.reason}`,
+    });
+    res.json(updated);
   });
 
   // ── Public invitation routes (no auth, RLS allows published data) ────────────

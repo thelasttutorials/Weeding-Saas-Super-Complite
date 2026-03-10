@@ -25,7 +25,8 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `/dashboard/gifts` - Digital gift accounts (bank/e-wallet)
 - `/dashboard/gallery` - Gallery photo management (URL-based)
 - `/dashboard/analytics` - Analytics with charts
-- `/dashboard/subscription` - Subscription plans (payment gateway: coming soon)
+- `/dashboard/subscription` - Subscription plans with checkout modal + payment history
+- `/dashboard/billing/:id` - Invoice detail page (countdown timer, bank transfer instructions, proof upload, payment timeline)
 - `/dashboard/settings` - Account settings + password change
 
 ### Admin Routes
@@ -37,7 +38,7 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `/admin/testimonials` - Testimonials CRUD (publish/unpublish, star rating)
 - `/admin/faqs` - FAQ CRUD (category filter, sort order, active toggle)
 - `/admin/pricing` - Pricing plans CRUD + plan features management
-- `/admin/payments` - Subscription/payment list (read-only, search + filter)
+- `/admin/payments` - Payment management with approve/reject actions, shows uniqueCode + amount + finalAmount columns, search + status filter
 - `/admin/settings` - Website settings (General + System tabs)
 - `/admin/seo` - SEO settings (meta tags, OG, Twitter card, live preview)
 - `/admin/logs` - Audit log viewer (color-coded action badges, search + filter)
@@ -58,8 +59,9 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - Admin testimonials/FAQ/pricing CRUD
 - Admin website settings & SEO settings stored in DB
 - Audit logging for all admin actions
+- **Manual Bank Transfer Payment System**: Users select plan → checkout modal → invoice with unique 3-digit code (amount + code = finalAmount) → 24h countdown timer → upload proof URL → admin approve/reject → plan auto-activated on approval
 
-## Database Tables (22 total)
+## Database Tables (24 total)
 ### User/Invitation Tables (RLS enforced)
 - `users` - Accounts with plan (free/premium/business) + isAdmin + isSuspended
 - `invitations` - Wedding invitations (slug, theme, status, views)
@@ -73,6 +75,10 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `gift_confirmations` - Gift transfer confirmations
 - `subscriptions` - Subscription records per user
 - `white_label_settings` - Per-user white label config
+
+### Payment Tables
+- `bank_accounts` - Admin-managed bank accounts for manual transfer (bankName, accountNumber, accountName, isActive)
+- `payments` - Invoice records (userId, plan, invoiceNumber, amount, uniqueCode, finalAmount, status, expiresAt, transferProofUrl, paidAt, rejectedReason)
 
 ### Admin/Platform Tables
 - `testimonials` - Platform testimonials with rating, publish status

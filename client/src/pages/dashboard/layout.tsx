@@ -14,6 +14,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/dashboard/gallery": { title: "Galeri Foto", description: "Kelola koleksi foto indah undangan Anda." },
   "/dashboard/analytics": { title: "Analitik", description: "Pantau performa dan statistik undangan Anda." },
   "/dashboard/subscription": { title: "Berlangganan", description: "Pilih paket yang sesuai dengan kebutuhan Anda." },
+  "/dashboard/billing": { title: "Detail Invoice", description: "Detail dan status pembayaran Anda." },
   "/dashboard/settings": { title: "Pengaturan Akun", description: "Kelola informasi dan keamanan akun Anda." },
 };
 

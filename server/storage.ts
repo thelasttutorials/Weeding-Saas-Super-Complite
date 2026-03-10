@@ -1,11 +1,12 @@
 import { db as defaultDb, type DrizzleDB } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or, ilike, lt, inArray } from "drizzle-orm";
 import {
   users, invitations, invitationCouples, invitationEvents,
   invitationContent, invitationGallery, rsvps, guestMessages,
   giftAccounts, giftConfirmations, subscriptions, whiteLabelSettings,
   testimonials, faqs, pricingPlans, pricingPlanFeatures, auditLogs,
   websiteSettings, seoSettings, weddingThemes, weddingThemeBlocks,
+  bankAccounts, payments,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
@@ -21,6 +22,8 @@ import {
   type WebsiteSettings, type SeoSettings,
   type WeddingTheme, type InsertWeddingTheme,
   type WeddingThemeBlock, type InsertWeddingThemeBlock,
+  type BankAccount, type InsertBankAccount,
+  type Payment, type InsertPayment,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -140,6 +143,21 @@ export interface IStorage {
 
   getAllUsers(): Promise<Omit<User, "password">[]>;
   getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
+
+  // Bank Accounts
+  getBankAccounts(activeOnly?: boolean): Promise<BankAccount[]>;
+  createBankAccount(data: InsertBankAccount): Promise<BankAccount>;
+  updateBankAccount(id: string, data: Partial<BankAccount>): Promise<BankAccount | undefined>;
+  deleteBankAccount(id: string): Promise<void>;
+
+  // Payments
+  createPayment(data: InsertPayment): Promise<Payment>;
+  getPaymentById(id: string): Promise<Payment | undefined>;
+  getPaymentsByUser(userId: string): Promise<Payment[]>;
+  updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined>;
+  getAdminPayments(filters?: { status?: string; search?: string }): Promise<(Payment & { username: string; email: string })[]>;
+  expireOverduePayments(): Promise<void>;
+  getUniqueCodeConflict(amount: number, code: number): Promise<boolean>;
 
   // Wedding Theme Builder
   getWeddingThemes(): Promise<WeddingTheme[]>;
@@ -771,6 +789,111 @@ export class DatabaseStorage implements IStorage {
         .set({ sortOrder: i, updatedAt: new Date() })
         .where(and(eq(weddingThemeBlocks.id, blockIds[i]), eq(weddingThemeBlocks.themeId, themeId)));
     }
+  }
+
+  // ── Bank Accounts ─────────────────────────────────────────────────────────
+
+  async getBankAccounts(activeOnly = false): Promise<BankAccount[]> {
+    const query = this.db.select().from(bankAccounts);
+    if (activeOnly) {
+      return query.where(eq(bankAccounts.isActive, true)).orderBy(bankAccounts.sortOrder);
+    }
+    return query.orderBy(bankAccounts.sortOrder);
+  }
+
+  async createBankAccount(data: InsertBankAccount): Promise<BankAccount> {
+    const [account] = await this.db.insert(bankAccounts).values({ ...data, id: randomUUID() }).returning();
+    return account;
+  }
+
+  async updateBankAccount(id: string, data: Partial<BankAccount>): Promise<BankAccount | undefined> {
+    const [account] = await this.db.update(bankAccounts).set(data).where(eq(bankAccounts.id, id)).returning();
+    return account;
+  }
+
+  async deleteBankAccount(id: string): Promise<void> {
+    await this.db.delete(bankAccounts).where(eq(bankAccounts.id, id));
+  }
+
+  // ── Payments ──────────────────────────────────────────────────────────────
+
+  async createPayment(data: InsertPayment): Promise<Payment> {
+    const [payment] = await this.db.insert(payments).values({ ...data, id: randomUUID() }).returning();
+    return payment;
+  }
+
+  async getPaymentById(id: string): Promise<Payment | undefined> {
+    const [payment] = await this.db.select().from(payments).where(eq(payments.id, id));
+    return payment;
+  }
+
+  async getPaymentsByUser(userId: string): Promise<Payment[]> {
+    return this.db.select().from(payments)
+      .where(eq(payments.userId, userId))
+      .orderBy(desc(payments.createdAt));
+  }
+
+  async updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined> {
+    const [payment] = await this.db.update(payments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(payments.id, id))
+      .returning();
+    return payment;
+  }
+
+  async getAdminPayments(filters?: { status?: string; search?: string }): Promise<(Payment & { username: string; email: string })[]> {
+    const results = await this.db
+      .select({
+        payment: payments,
+        username: users.username,
+        email: users.email,
+      })
+      .from(payments)
+      .leftJoin(users, eq(payments.userId, users.id))
+      .orderBy(desc(payments.createdAt));
+
+    let filtered = results.map(r => ({
+      ...r.payment,
+      username: r.username ?? "",
+      email: r.email ?? "",
+    }));
+
+    if (filters?.status && filters.status !== "all") {
+      filtered = filtered.filter(p => p.status === filters.status);
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.username.toLowerCase().includes(q) ||
+        p.email.toLowerCase().includes(q) ||
+        p.invoiceNumber.toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }
+
+  async expireOverduePayments(): Promise<void> {
+    await this.db.update(payments)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(
+        and(
+          inArray(payments.status, ["pending", "waiting_confirmation"]),
+          lt(payments.expiresAt, new Date())
+        )
+      );
+  }
+
+  async getUniqueCodeConflict(amount: number, code: number): Promise<boolean> {
+    const [existing] = await this.db.select().from(payments)
+      .where(
+        and(
+          eq(payments.amount, amount),
+          eq(payments.uniqueCode, code),
+          inArray(payments.status, ["pending", "waiting_confirmation"])
+        )
+      )
+      .limit(1);
+    return !!existing;
   }
 }
 

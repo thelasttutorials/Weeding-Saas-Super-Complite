@@ -20,6 +20,7 @@ import GiftSettings from "@/pages/dashboard/gifts";
 import GalleryPage from "@/pages/dashboard/gallery";
 import Analytics from "@/pages/dashboard/analytics";
 import Subscription from "@/pages/dashboard/subscription";
+import PaymentInvoice from "@/pages/dashboard/payment-invoice";
 import AccountSettings from "@/pages/dashboard/settings";
 import InvitePage from "@/pages/invite";
 import PreviewPage from "@/pages/preview";
@@ -100,6 +101,9 @@ function Router() {
       </Route>
       <Route path="/dashboard/subscription">
         {() => <ProtectedLayout><Subscription /></ProtectedLayout>}
+      </Route>
+      <Route path="/dashboard/billing/:id">
+        {() => <ProtectedLayout><PaymentInvoice /></ProtectedLayout>}
       </Route>
       <Route path="/dashboard/settings">
         {() => <ProtectedLayout><AccountSettings /></ProtectedLayout>}

@@ -1,0 +1,526 @@
+Aktifkan dan implementasikan fitur pembayaran manual menggunakan transfer bank untuk platform WedSaaS agar benar-benar berfungsi end-to-end.
+
+Konteks:
+Saat ini halaman langganan sudah memiliki paket Free, Premium, dan Business. Namun tombol pembayaran masih belum aktif dan hanya menampilkan info bahwa payment gateway segera hadir. Saya ingin sekarang tersedia metode pembayaran manual via transfer bank yang benar-benar dapat digunakan.
+
+PENTING:
+Jangan buat UI dummy. Jangan buat tombol palsu. Semua flow harus benar-benar bekerja, tersimpan ke database, memiliki status pembayaran, bukti transfer, verifikasi admin, dan aktivasi paket setelah pembayaran dikonfirmasi.
+
+Gunakan stack yang sudah ada:
+- Next.js App Router
+- TypeScript
+- TailwindCSS
+- shadcn/ui
+- Prisma ORM
+- PostgreSQL
+- NextAuth/Auth.js
+- Zod
+- React Hook Form
+- TanStack Query
+
+==================================================
+TUJUAN FITUR
+==================================================
+
+User harus bisa:
+1. memilih paket Premium atau Business
+2. memilih metode pembayaran transfer bank
+3. melihat instruksi transfer
+4. mengunggah bukti transfer
+5. mengirim pembayaran untuk diverifikasi admin
+6. melihat status pembayaran
+7. otomatis mendapatkan paket aktif setelah admin menyetujui pembayaran
+
+Admin harus bisa:
+1. melihat daftar pembayaran masuk
+2. melihat bukti transfer
+3. memverifikasi pembayaran
+4. menolak pembayaran jika tidak valid
+5. mengubah status pembayaran
+6. mengaktifkan subscription user setelah pembayaran dikonfirmasi
+
+==================================================
+FLOW PEMBAYARAN YANG WAJIB BERJALAN
+==================================================
+
+Flow user:
+1. User masuk ke halaman /dashboard/billing atau /dashboard/langganan
+2. User klik "Pilih Premium" atau "Pilih Business"
+3. Muncul modal / halaman checkout
+4. User memilih metode "Transfer Bank"
+5. Sistem membuat invoice pembayaran dengan status PENDING
+6. Sistem menampilkan:
+   - nomor invoice
+   - nama paket
+   - nominal transfer
+   - rekening tujuan
+   - nama bank
+   - nama pemilik rekening
+   - catatan transfer unik jika perlu
+7. User transfer manual
+8. User upload bukti transfer
+9. Status pembayaran berubah menjadi WAITING_CONFIRMATION
+10. Admin membuka panel pembayaran
+11. Admin verifikasi bukti
+12. Jika disetujui:
+   - status payment jadi PAID
+   - status subscription jadi ACTIVE
+   - paket user berubah sesuai pembelian
+13. Jika ditolak:
+   - status payment jadi REJECTED
+   - user diberi alasan penolakan
+14. User bisa melihat riwayat pembayaran di dashboard
+
+==================================================
+DATABASE SCHEMA YANG HARUS DITAMBAHKAN / DIPERBAIKI
+==================================================
+
+Pastikan ada model yang memadai. Jika belum ada, buat atau sesuaikan:
+
+Enum PaymentMethod:
+- BANK_TRANSFER
+
+Enum PaymentStatus:
+- PENDING
+- WAITING_CONFIRMATION
+- PAID
+- REJECTED
+- EXPIRED
+- CANCELED
+
+Enum SubscriptionStatus:
+- ACTIVE
+- EXPIRED
+- PENDING
+- CANCELED
+
+Model BankAccount
+- id
+- bankName
+- accountName
+- accountNumber
+- branch optional
+- isActive
+- sortOrder
+- createdAt
+- updatedAt
+
+Model Payment
+- id
+- userId
+- pricingPlanId
+- invoiceNumber
+- amount
+- uniqueCode optional
+- finalAmount
+- paymentMethod
+- status
+- transferProofUrl optional
+- paidAt optional
+- rejectedReason optional
+- expiresAt optional
+- createdAt
+- updatedAt
+
+Model Subscription
+- id
+- userId
+- pricingPlanId
+- paymentId optional
+- startDate
+- endDate optional
+- subscriptionStatus
+- createdAt
+- updatedAt
+
+Model PaymentVerificationLog
+- id
+- paymentId
+- adminId
+- action
+- notes optional
+- createdAt
+
+Relasi:
+- Payment belongs to User
+- Payment belongs to PricingPlan
+- Subscription belongs to User
+- Subscription belongs to PricingPlan
+- Subscription optionally references Payment
+- PaymentVerificationLog belongs to Payment and Admin
+
+==================================================
+SEED DATA
+==================================================
+
+Buat seed data rekening bank aktif:
+
+1. BCA
+   accountName: WedSaaS Digital Indonesia
+   accountNumber: 1234567890
+
+2. Mandiri
+   accountName: WedSaaS Digital Indonesia
+   accountNumber: 9876543210
+
+3. BNI
+   accountName: WedSaaS Digital Indonesia
+   accountNumber: 1122334455
+
+Juga pastikan paket berikut tersedia:
+- Free
+- Premium
+- Business
+
+==================================================
+HALAMAN USER YANG HARUS DIBUAT / DIPERBAIKI
+==================================================
+
+1. Halaman Langganan
+Route:
+- /dashboard/billing
+atau
+- /dashboard/langganan
+
+Tampilkan:
+- paket saat ini
+- daftar paket
+- tombol pilih paket
+- status subscription aktif
+- riwayat pembayaran terakhir
+
+2. Modal / halaman checkout transfer bank
+Saat klik Premium / Business:
+- tampilkan ringkasan pesanan
+- nama paket
+- harga paket
+- metode pembayaran = transfer bank
+- daftar rekening tujuan
+- tombol "Buat Invoice"
+
+3. Halaman detail invoice
+Route contoh:
+- /dashboard/billing/invoice/[id]
+
+Tampilkan:
+- nomor invoice
+- paket
+- nominal
+- status pembayaran
+- rekening tujuan
+- instruksi transfer
+- upload bukti transfer
+- preview bukti transfer
+- tombol kirim bukti
+
+4. Halaman riwayat pembayaran user
+Route:
+- /dashboard/billing/history
+
+Tampilkan tabel:
+- invoice
+- paket
+- nominal
+- metode
+- status
+- tanggal
+- aksi lihat detail
+
+==================================================
+HALAMAN ADMIN YANG HARUS DIBUAT / DIPERBAIKI
+==================================================
+
+Route:
+- /admin/payments
+
+Fitur:
+- list semua pembayaran
+- filter status
+- search by invoice / email / user
+- lihat detail pembayaran
+- lihat bukti transfer
+- verifikasi pembayaran
+- tolak pembayaran
+- set paid
+- set rejected
+- catatan admin
+
+Detail pembayaran admin harus menampilkan:
+- invoice number
+- nama user
+- email user
+- paket yang dibeli
+- nominal
+- unique code jika ada
+- total transfer final
+- tanggal dibuat
+- bukti transfer
+- status pembayaran
+- subscription status user saat ini
+
+Tombol admin:
+- Approve Payment
+- Reject Payment
+- Mark as Expired
+- View Proof
+
+Jika approve:
+- payment.status = PAID
+- payment.paidAt terisi
+- subscription dibuat/diupdate jadi ACTIVE
+- plan user berubah
+- buat log verifikasi
+- buat notifikasi ke user
+
+Jika reject:
+- payment.status = REJECTED
+- simpan rejectedReason
+- buat log verifikasi
+- buat notifikasi ke user
+
+==================================================
+UPLOAD BUKTI TRANSFER
+==================================================
+
+Buat upload bukti transfer yang benar-benar berfungsi.
+
+Syarat:
+- support jpg, jpeg, png, webp, pdf opsional
+- validasi ukuran file
+- simpan file secara aman
+- simpan URL/path ke database
+- tampilkan preview jika gambar
+- tampilkan link download jika pdf
+
+Gunakan media uploader yang sudah ada jika tersedia. Jika belum, buat upload handler yang bersih dan reusable.
+
+==================================================
+INSTRUKSI TRANSFER YANG HARUS TAMPIL
+==================================================
+
+Di halaman invoice tampilkan blok instruksi seperti ini:
+
+Langkah pembayaran:
+1. Transfer sesuai nominal yang tertera
+2. Gunakan salah satu rekening resmi WedSaaS
+3. Upload bukti transfer setelah pembayaran
+4. Admin akan memverifikasi maksimal 1x24 jam
+5. Paket akan aktif setelah pembayaran dikonfirmasi
+
+Tambahkan status badge:
+- Menunggu Pembayaran
+- Menunggu Verifikasi
+- Lunas
+- Ditolak
+- Kadaluarsa
+
+==================================================
+LOGIKA SUBSCRIPTION
+==================================================
+
+Aturan:
+- Paket Free aktif default untuk user baru
+- Jika user membeli Premium dan disetujui:
+  - subscription lama dinonaktifkan atau dianggap expired
+  - buat subscription baru dengan plan Premium
+- Jika user membeli Business dan disetujui:
+  - update ke Business
+- Jika pembayaran masih pending/rejected:
+  - paket user jangan berubah
+- Jika invoice kadaluarsa:
+  - status jadi EXPIRED
+
+Untuk masa aktif:
+- Premium bisa one_time per invitation atau sesuai struktur plan saat ini
+- Business bisa monthly
+Sesuaikan dengan billingType plan yang sudah ada
+
+==================================================
+VALIDATION DAN BUSINESS RULE
+==================================================
+
+Gunakan Zod validation.
+
+Validasi:
+- user harus login
+- plan harus valid
+- hanya plan berbayar yang bisa checkout transfer
+- bukti transfer wajib saat submit konfirmasi
+- tidak bisa approve payment tanpa invoice valid
+- tidak bisa upload bukti untuk payment milik user lain
+- tidak bisa buat invoice duplikat aktif yang bentrok jika perlu
+
+Tambahkan business rules:
+- satu invoice punya satu status aktif
+- invoice bisa punya expiresAt
+- jika expired, user harus buat invoice baru
+- nominal transfer harus konsisten
+
+==================================================
+NOTIFIKASI
+==================================================
+
+Tambahkan notifikasi/toast dan in-app notification:
+
+Saat user buat invoice:
+- "Invoice pembayaran berhasil dibuat"
+
+Saat user upload bukti:
+- "Bukti transfer berhasil dikirim, menunggu verifikasi admin"
+
+Saat admin approve:
+- "Pembayaran Anda telah dikonfirmasi. Paket sekarang aktif."
+
+Saat admin reject:
+- "Pembayaran ditolak. Silakan cek alasan penolakan."
+
+Jika ada notification center, simpan ke database juga.
+
+==================================================
+AUDIT LOG / PAYMENT LOG
+==================================================
+
+Catat semua aksi:
+- invoice dibuat
+- bukti transfer diupload
+- payment approved
+- payment rejected
+- payment expired
+
+Jika sudah ada AuditLog atau ActivityLog, integrasikan ke sana.
+
+==================================================
+UI/UX YANG DIHARAPKAN
+==================================================
+
+Buat UI profesional dan jelas.
+
+User side:
+- card paket
+- modal checkout
+- invoice detail card
+- upload bukti transfer
+- status badge
+- timeline status pembayaran
+
+Admin side:
+- payment data table
+- status filter tabs
+- payment detail drawer/dialog
+- bukti transfer preview
+- approve/reject dialog
+- notes form
+
+Gunakan:
+- shadcn/ui
+- dialog
+- card
+- badge
+- table
+- toast
+- alert dialog
+- loading skeleton
+- empty state
+
+==================================================
+API / SERVER ACTIONS YANG HARUS DIBUAT
+==================================================
+
+Buat server actions atau API route yang clean dan typed untuk:
+
+1. createBankTransferInvoice(planId)
+2. getMyPayments()
+3. getPaymentDetail(paymentId)
+4. uploadTransferProof(paymentId, file)
+5. submitTransferConfirmation(paymentId)
+6. adminGetPayments(filters)
+7. adminApprovePayment(paymentId, notes)
+8. adminRejectPayment(paymentId, reason)
+9. adminExpirePayment(paymentId)
+10. getActiveBankAccounts()
+
+Semua endpoint harus:
+- auth protected
+- role protected untuk admin routes
+- validasi Zod
+- error handling rapi
+
+==================================================
+HALAMAN / KOMPONEN YANG WAJIB ADA
+==================================================
+
+1. Pricing cards yang tombolnya aktif
+2. Checkout transfer bank modal
+3. Invoice detail page
+4. Upload proof component
+5. Payment history table
+6. Admin payment management table
+7. Admin payment detail view
+8. Status badge component
+9. Bank account card/list component
+10. Payment timeline component
+
+==================================================
+PAYMENT TIMELINE
+==================================================
+
+Di halaman detail invoice tampilkan timeline:
+
+- Invoice dibuat
+- Menunggu transfer
+- Bukti transfer dikirim
+- Menunggu verifikasi admin
+- Pembayaran dikonfirmasi / ditolak
+
+==================================================
+GITHUB / PROJECT QUALITY
+==================================================
+
+Pastikan:
+- code typed
+- modular
+- maintainable
+- tidak ada dummy TODO
+- tidak ada hardcoded status palsu di frontend
+- semua query ke database benar
+- upload path aman
+- route protection benar
+
+==================================================
+CHECKLIST WAJIB SEBELUM SELESAI
+==================================================
+
+Sebelum menganggap implementasi selesai, cek:
+
+1. Apakah user bisa klik pilih Premium/Business?
+2. Apakah invoice benar-benar dibuat di database?
+3. Apakah rekening bank tampil dari database?
+4. Apakah user bisa upload bukti transfer?
+5. Apakah status berubah ke WAITING_CONFIRMATION?
+6. Apakah admin bisa melihat pembayaran masuk?
+7. Apakah admin bisa approve/reject?
+8. Apakah approve mengaktifkan subscription?
+9. Apakah reject menyimpan alasan?
+10. Apakah user bisa melihat riwayat pembayaran?
+11. Apakah notifikasi tampil?
+12. Apakah semua halaman protected sesuai role?
+
+==================================================
+OUTPUT YANG SAYA INGINKAN
+==================================================
+
+Berikan hasil implementasi lengkap:
+1. Prisma schema update
+2. Migration
+3. Seed data bank account
+4. Server actions / API routes
+5. User billing page
+6. Invoice detail page
+7. Upload proof component
+8. Payment history page
+9. Admin payment management page
+10. Payment status badges
+11. Notification integration
+12. Langkah setup dan testing
+
+Kerjakan file per file dan prioritaskan kode yang benar-benar langsung jalan.

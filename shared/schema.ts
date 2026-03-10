@@ -10,6 +10,7 @@ export const themeEnum = pgEnum("theme", ["classic_elegant", "minimal_modern", "
 export const giftTypeEnum = pgEnum("gift_type", ["bank", "wallet"]);
 export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "inactive", "cancelled", "expired"]);
 export const billingTypeEnum = pgEnum("billing_type", ["one_time", "monthly", "yearly"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "waiting_confirmation", "paid", "rejected", "expired", "canceled"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -274,6 +275,38 @@ export const weddingThemeBlocks = pgTable("wedding_theme_blocks", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ── Bank accounts (for manual transfer payment) ───────────────────────────────
+export const bankAccounts = pgTable("bank_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bankName: text("bank_name").notNull(),
+  accountName: text("account_name").notNull(),
+  accountNumber: text("account_number").notNull(),
+  branch: text("branch"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Payments (manual bank transfer invoices) ─────────────────────────────────
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  plan: planEnum("plan").notNull(),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  amount: integer("amount").notNull(),
+  uniqueCode: integer("unique_code").notNull(),
+  finalAmount: integer("final_amount").notNull(),
+  paymentMethod: text("payment_method").notNull().default("bank_transfer"),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  transferProofUrl: text("transfer_proof_url"),
+  rejectedReason: text("rejected_reason"),
+  adminNotes: text("admin_notes"),
+  expiresAt: timestamp("expires_at"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ── Insert schemas ───────────────────────────────────────────────────────────
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -298,6 +331,8 @@ export const insertWebsiteSettingsSchema = createInsertSchema(websiteSettings).o
 export const insertSeoSettingsSchema = createInsertSchema(seoSettings).omit({ id: true, updatedAt: true });
 export const insertWeddingThemeSchema = createInsertSchema(weddingThemes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWeddingThemeBlockSchema = createInsertSchema(weddingThemeBlocks).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true });
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -337,6 +372,11 @@ export type WeddingTheme = typeof weddingThemes.$inferSelect;
 export type InsertWeddingTheme = z.infer<typeof insertWeddingThemeSchema>;
 export type WeddingThemeBlock = typeof weddingThemeBlocks.$inferSelect;
 export type InsertWeddingThemeBlock = z.infer<typeof insertWeddingThemeBlockSchema>;
+
+export type BankAccount = typeof bankAccounts.$inferSelect;
+export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;
