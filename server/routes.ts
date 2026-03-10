@@ -266,6 +266,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
   });
 
+  // Preview route — owner/admin only, no status check, no view increment
+  app.get("/api/invitations/:id/preview-data", requireAuth, async (req, res) => {
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(req.params.id);
+      const user = req.user as Express.User;
+      if (!inv || (inv.userId !== user.id && !user.isAdmin)) {
+        res.status(404).json({ message: "Not found" });
+        return;
+      }
+      const full = await s.getFullInvitationBySlug(inv.slug);
+      res.json(full || inv);
+    });
+  });
+
   // ── Builder detail routes (RLS-scoped) ──────────────────────────────────────
 
   app.get("/api/invitations/:id/couple", requireAuth, async (req, res) => {

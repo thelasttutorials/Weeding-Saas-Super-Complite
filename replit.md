@@ -15,7 +15,8 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `/` - Marketing landing page
 - `/login` - Login page
 - `/register` - Register page
-- `/invite/:slug` - Public wedding invitation page (no auth required)
+- `/invite/:slug` - Public wedding invitation page (no auth required) — includes share section (Copy, WhatsApp, Telegram)
+- `/preview/:id` - Draft/published invitation preview page (auth required, no sidebar, shows "Mode Preview" amber banner)
 - `/dashboard` - Dashboard overview (auth required)
 - `/dashboard/invitations` - Invitation list & create
 - `/dashboard/builder/:id` - Invitation builder (5 tabs: couple, events, content, theme, settings)
@@ -121,6 +122,7 @@ This project uses Express v5 with `@types/express` v5. Route params are typed as
 - `GET/POST /api/invitations`
 - `GET/PATCH/DELETE /api/invitations/:id`
 - `POST /api/invitations/:id/publish`, `POST /api/invitations/:id/unpublish`
+- `GET /api/invitations/:id/preview-data` — owner/admin only, returns full invitation data regardless of publish status (no view tracking)
 - `GET/PUT /api/invitations/:id/couple`
 - `GET/PUT /api/invitations/:id/events`
 - `GET/PUT /api/invitations/:id/content`

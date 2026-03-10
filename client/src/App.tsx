@@ -22,6 +22,7 @@ import Analytics from "@/pages/dashboard/analytics";
 import Subscription from "@/pages/dashboard/subscription";
 import AccountSettings from "@/pages/dashboard/settings";
 import InvitePage from "@/pages/invite";
+import PreviewPage from "@/pages/preview";
 import AdminLayout from "@/pages/admin/layout";
 import AdminDashboard from "@/pages/admin/index";
 import AdminUsers from "@/pages/admin/users";
@@ -54,6 +55,13 @@ function ProtectedLayout({ children }: { children: ReactNode }) {
   return <DashboardLayout>{children}</DashboardLayout>;
 }
 
+function AuthRequired({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Redirect to="/login" />;
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -61,6 +69,9 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/invite/:slug" component={InvitePage} />
+      <Route path="/preview/:id">
+        {() => <AuthRequired><PreviewPage /></AuthRequired>}
+      </Route>
 
       {/* User Dashboard */}
       <Route path="/dashboard">
