@@ -19,7 +19,7 @@ export default function GiftSettings() {
   const { toast } = useToast();
   const [selectedInvId, setSelectedInvId] = useState<string>("");
   const [addOpen, setAddOpen] = useState(false);
-  const [formData, setFormData] = useState({ type: "bank", bankName: "", accountNumber: "", accountHolder: "", walletName: "", walletNumber: "" });
+  const [formData, setFormData] = useState({ type: "bank", bankName: "", accountNumber: "", accountHolder: "", walletName: "", walletNumber: "", qrisUrl: "" });
   const [giftAddress, setGiftAddress] = useState("");
   const [addressSaving, setAddressSaving] = useState(false);
   const [addressSaved, setAddressSaved] = useState(false);
@@ -49,7 +49,7 @@ export default function GiftSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invitations", currentInvId, "gifts"] });
       setAddOpen(false);
-      setFormData({ type: "bank", bankName: "", accountNumber: "", accountHolder: "", walletName: "", walletNumber: "" });
+      setFormData({ type: "bank", bankName: "", accountNumber: "", accountHolder: "", walletName: "", walletNumber: "", qrisUrl: "" });
       toast({ title: "Rekening ditambahkan!" });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -290,10 +290,22 @@ export default function GiftSettings() {
                 <SelectContent>
                   <SelectItem value="bank">Rekening Bank</SelectItem>
                   <SelectItem value="wallet">E-Wallet</SelectItem>
+                  <SelectItem value="qris">QRIS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {formData.type === "bank" ? (
+            {formData.type === "qris" ? (
+              <>
+                <div className="space-y-2">
+                  <Label>URL Gambar QRIS</Label>
+                  <Input value={formData.qrisUrl} onChange={e => setFormData(p => ({ ...p, qrisUrl: e.target.value }))} placeholder="https://.../qris.jpg" data-testid="input-qris-url" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nama Pemilik (Opsional)</Label>
+                  <Input value={formData.accountHolder} onChange={e => setFormData(p => ({ ...p, accountHolder: e.target.value }))} placeholder="Ahmad Ridwan" data-testid="input-qris-holder" />
+                </div>
+              </>
+            ) : formData.type === "bank" ? (
               <>
                 <div className="space-y-2">
                   <Label>Nama Bank</Label>

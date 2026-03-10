@@ -11,12 +11,47 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertGuestSchema, type Guest } from "@shared/schema";
+import { insertGuestSchema, type Guest, type GuestEventAssignment } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Search, UserPlus, Copy, Trash2, Edit2, QrCode, CheckCircle2, Clock } from "lucide-react";
+import { Search, UserPlus, Copy, Trash2, Edit2, QrCode, CheckCircle2, Clock, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QRCodeSVG } from "qrcode.react";
+
+function GuestEventSelector({ guestId }: { guestId: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { data: assignment, isLoading } = useQuery<GuestEventAssignment>({
+    queryKey: ["/api/guests", guestId, "events"],
+  });
+
+  const mutation = useMutation({
+    mutationFn: (eventType: string) => apiRequest("PUT", `/api/guests/${guestId}/events`, { eventType }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/guests", guestId, "events"] });
+      toast({ title: "Penempatan acara tamu diperbarui" });
+    },
+  });
+
+  if (isLoading) return <Skeleton className="h-8 w-24" />;
+
+  return (
+    <Select 
+      defaultValue={assignment?.eventType || "both"} 
+      onValueChange={(val) => mutation.mutate(val)}
+      disabled={mutation.isPending}
+    >
+      <SelectTrigger className="h-8 w-32 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="both">Keduanya</SelectItem>
+        <SelectItem value="akad">Akad Saja</SelectItem>
+        <SelectItem value="reception">Resepsi Saja</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function GuestManagement() {
   const { id } = useParams<{ id: string }>();
@@ -216,6 +251,7 @@ export default function GuestManagement() {
               <TableRow>
                 <TableHead>Nama</TableHead>
                 <TableHead>Kategori</TableHead>
+                <TableHead>Acara</TableHead>
                 <TableHead>RSVP</TableHead>
                 <TableHead>Check-in</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
@@ -227,6 +263,7 @@ export default function GuestManagement() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
@@ -234,7 +271,7 @@ export default function GuestManagement() {
                 ))
               ) : filteredGuests.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     Belum ada tamu yang terdaftar.
                   </TableCell>
                 </TableRow>
@@ -247,6 +284,9 @@ export default function GuestManagement() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">{guest.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <GuestEventSelector guestId={guest.id} />
                     </TableCell>
                     <TableCell>{getStatusBadge(guest.rsvpStatus)}</TableCell>
                     <TableCell>
@@ -269,7 +309,17 @@ export default function GuestManagement() {
                         <Button size="icon" variant="ghost" onClick={() => setShowQR(guest)} title="QR Code" data-testid={`button-qr-${guest.id}`}>
                           <QrCode className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => { setEditingGuest(guest); form.reset(guest); }} title="Edit" data-testid={`button-edit-${guest.id}`}>
+                        <Button size="icon" variant="ghost" onClick={() => { 
+                          setEditingGuest(guest); 
+                          form.reset({
+                            name: guest.name,
+                            phone: guest.phone || "",
+                            email: guest.email || "",
+                            category: guest.category,
+                            guestCount: guest.guestCount,
+                            notes: guest.notes || "",
+                          }); 
+                        }} title="Edit" data-testid={`button-edit-${guest.id}`}>
                           <Edit2 className="w-4 h-4" />
                         </Button>
                         <Button size="icon" variant="ghost" className="text-destructive" onClick={() => { if(confirm("Hapus tamu ini?")) deleteMutation.mutate(guest.id); }} title="Hapus" data-testid={`button-delete-${guest.id}`}>

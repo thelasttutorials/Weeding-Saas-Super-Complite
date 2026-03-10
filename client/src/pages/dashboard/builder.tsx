@@ -16,11 +16,11 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, Save, Globe, Loader2, ExternalLink, Image, Plus, Trash2, 
   Copy, CheckCircle, XCircle, Eye, Share2, Wand2, Music, Upload, Search, FileAudio, Play, Pause, ChevronDown,
-  Database
+  Database, Calendar as CalendarIcon, GripVertical
 } from "lucide-react";
 import { Link } from "wouter";
 import { AICopyAssistant } from "@/components/ai-copy-assistant";
-import type { Invitation, InvitationCouple, InvitationEvents, InvitationContent, GalleryImage, MediaAsset } from "@shared/schema";
+import type { Invitation, InvitationCouple, InvitationEvents, InvitationContent, GalleryImage, MediaAsset, LoveStoryItem } from "@shared/schema";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -93,6 +93,11 @@ export default function Builder() {
     enabled: !!id,
   });
 
+  const { data: loveStoryItems } = useQuery<LoveStoryItem[]>({
+    queryKey: ["/api/invitations", id, "love-story"],
+    enabled: !!id,
+  });
+
   const { data: mediaAssets } = useQuery<MediaAsset[]>({
     queryKey: ["/api/media"],
   });
@@ -110,9 +115,12 @@ export default function Builder() {
     openingQuote: "", closingMessage: "", hashtag: "", livestreamLink: "",
     backgroundMusic: "", musicEnabled: false, musicLabel: "", showMusicControl: true,
     enableRsvp: true, rsvpDeadline: "", maxGuests: 2,
+    videoUrl: "",
+    colorPreset: "classic",
   });
   const [settingsData, setSettingsData] = useState({
     title: "", slug: "", coverImage: "",
+    saveTheDateEnabled: false, saveTheDateMessage: "",
   });
   const [playingMusic, setPlayingMusic] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -172,6 +180,8 @@ export default function Builder() {
       showMusicControl: content.showMusicControl ?? true,
       enableRsvp: content.enableRsvp ?? true,
       rsvpDeadline: content.rsvpDeadline || "", maxGuests: content.maxGuests ?? 2,
+      videoUrl: content.videoUrl || "",
+      colorPreset: content.colorPreset || "classic",
     });
   }, [content]);
 
@@ -180,6 +190,8 @@ export default function Builder() {
       title: invitation.title || "",
       slug: invitation.slug || "",
       coverImage: invitation.coverImage || "",
+      saveTheDateEnabled: invitation.saveTheDateEnabled ?? false,
+      saveTheDateMessage: invitation.saveTheDateMessage || "",
     });
   }, [invitation]);
 
@@ -311,6 +323,41 @@ export default function Builder() {
     onError: (err: any) => toast({ title: "Gagal menghapus foto", description: err.message, variant: "destructive" }),
   });
 
+  // ── Love Story mutations ─────────────────────────────────────────────────────
+
+  const createLoveStoryMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", `/api/invitations/${id}/love-story`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations", id, "love-story"] });
+      toast({ title: "Item berhasil ditambah" });
+    },
+    onError: (err: any) => toast({ title: "Gagal menambah item", description: err.message, variant: "destructive" }),
+  });
+
+  const updateLoveStoryMutation = useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: any }) => apiRequest("PATCH", `/api/love-story/${itemId}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations", id, "love-story"] });
+    },
+    onError: (err: any) => toast({ title: "Gagal mengupdate item", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteLoveStoryMutation = useMutation({
+    mutationFn: (itemId: string) => apiRequest("DELETE", `/api/love-story/${itemId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations", id, "love-story"] });
+      toast({ title: "Item berhasil dihapus" });
+    },
+    onError: (err: any) => toast({ title: "Gagal menghapus item", description: err.message, variant: "destructive" }),
+  });
+
+  const reorderLoveStoryMutation = useMutation({
+    mutationFn: (itemIds: string[]) => apiRequest("PATCH", `/api/invitations/${id}/love-story/reorder`, { itemIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations", id, "love-story"] });
+    },
+  });
+
   // ── Loading / not found states ───────────────────────────────────────────────
   if (isLoading) return (
     <div className="p-6 space-y-4 max-w-4xl mx-auto">
@@ -396,6 +443,7 @@ export default function Builder() {
           <TabsTrigger value="couple" data-testid="tab-couple">Pasangan</TabsTrigger>
           <TabsTrigger value="events" data-testid="tab-events">Acara</TabsTrigger>
           <TabsTrigger value="content" data-testid="tab-content">Konten</TabsTrigger>
+          <TabsTrigger value="love-story" data-testid="tab-love-story">Kisah Cinta</TabsTrigger>
           <TabsTrigger value="gallery" data-testid="tab-gallery">Galeri</TabsTrigger>
           <TabsTrigger value="theme" data-testid="tab-theme">Tema</TabsTrigger>
           <TabsTrigger value="settings" data-testid="tab-settings">Pengaturan</TabsTrigger>
@@ -789,6 +837,83 @@ export default function Builder() {
           </Card>
         </TabsContent>
 
+        {/* ── Kisah Cinta Tab ── */}
+        <TabsContent value="love-story">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0">
+              <CardTitle className="text-base">Timeline Kisah Cinta</CardTitle>
+              <Button size="sm" onClick={() => createLoveStoryMutation.mutate({
+                title: "Pertama Bertemu",
+                dateLabelText: "Januari 2020",
+                description: "Tulis cerita singkat di sini...",
+                sortOrder: loveStoryItems?.length || 0
+              })} disabled={createLoveStoryMutation.isPending}>
+                <Plus className="w-4 h-4 mr-2" /> Tambah Item
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loveStoryItems?.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                  Belum ada timeline kisah cinta. Klik "Tambah Item" untuk memulai.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {loveStoryItems?.map((item, idx) => (
+                    <div key={item.id} className="p-4 border rounded-lg bg-card/50 space-y-3 relative group">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab" />
+                          <Input
+                            className="font-bold h-8 border-none p-0 focus-visible:ring-0 bg-transparent"
+                            value={item.title}
+                            placeholder="Judul"
+                            onChange={(e) => updateLoveStoryMutation.mutate({ itemId: item.id, data: { title: e.target.value } })}
+                          />
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive h-8 w-8"
+                          onClick={() => deleteLoveStoryMutation.mutate(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Label Tanggal / Waktu</Label>
+                          <Input
+                            value={item.dateLabelText}
+                            placeholder="Contoh: Januari 2020"
+                            onChange={(e) => updateLoveStoryMutation.mutate({ itemId: item.id, data: { dateLabelText: e.target.value } })}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Foto URL (Opsional)</Label>
+                          <Input
+                            value={item.imageUrl || ""}
+                            placeholder="https://..."
+                            onChange={(e) => updateLoveStoryMutation.mutate({ itemId: item.id, data: { imageUrl: e.target.value } })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Cerita</Label>
+                        <Textarea
+                          className="min-h-[80px]"
+                          value={item.description}
+                          placeholder="Ceritakan momen indah ini..."
+                          onChange={(e) => updateLoveStoryMutation.mutate({ itemId: item.id, data: { description: e.target.value } })}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ── Galeri Tab ── */}
         <TabsContent value="gallery">
           <Card>
@@ -860,47 +985,87 @@ export default function Builder() {
         {/* ── Tema Tab ── */}
         <TabsContent value="theme">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Pilih Tema</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+              <CardTitle className="text-base">Pilih Tema & Warna</CardTitle>
+              <SaveButton
+                isPending={themeMutation.isPending || contentMutation.isPending}
+                savedKey={savedSection}
+                sectionKey="theme"
+                onClick={() => {
+                  contentMutation.mutate();
+                }}
+                testId="button-save-theme-tab"
+              />
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { value: "classic_elegant", label: "Classic Elegant", gradient: "from-stone-800 to-stone-600", desc: "Elegan & timeless" },
-                  { value: "minimal_modern", label: "Minimal Modern", gradient: "from-zinc-900 to-zinc-700", desc: "Bersih & kontemporer" },
-                  { value: "romantic_floral", label: "Romantic Floral", gradient: "from-rose-800 to-pink-600", desc: "Romantis & feminin" },
-                  { value: "luxury_gold", label: "Luxury Gold", gradient: "from-yellow-800 to-amber-600", desc: "Mewah & berkesan" },
-                ].map((theme) => {
-                  const isActive = invitation.theme === theme.value;
-                  return (
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label>Warna Preset</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {[
+                    { id: 'classic', name: 'Classic Gold', primary: '#B8960C', bg: '#FDFCF0' },
+                    { id: 'rose_gold', name: 'Rose Gold', primary: '#C9956B', bg: '#FFF5F0' },
+                    { id: 'sage', name: 'Sage Green', primary: '#6B7C5C', bg: '#F0F4F0' },
+                    { id: 'black', name: 'Luxury Black', primary: '#1A1A1A', bg: '#F5F5F5' },
+                    { id: 'white', name: 'Classic White', primary: '#A8A29E', bg: '#FFFFFF' },
+                  ].map((preset) => (
                     <button
-                      key={theme.value}
-                      onClick={() => !isActive && themeMutation.mutate(theme.value)}
-                      disabled={themeMutation.isPending}
-                      className={`rounded-xl overflow-hidden border-2 transition-all text-left ${
-                        isActive ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+                      key={preset.id}
+                      onClick={() => setContentData(p => ({ ...p, colorPreset: preset.id }))}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        contentData.colorPreset === preset.id ? 'border-primary bg-primary/5' : 'border-transparent bg-muted/50 hover:border-muted-foreground/20'
                       }`}
-                      data-testid={`theme-${theme.value}`}
+                      data-testid={`button-preset-${preset.id}`}
                     >
-                      <div className={`aspect-[3/2] bg-gradient-to-b ${theme.gradient} flex flex-col items-center justify-center gap-1 relative`}>
-                        {themeMutation.isPending && isActive && (
-                          <Loader2 className="w-5 h-5 text-white animate-spin" />
-                        )}
-                        {isActive && !themeMutation.isPending && (
-                          <CheckCircle className="w-5 h-5 text-white" />
-                        )}
-                        <span className="text-white/90 text-xs font-medium">{theme.label}</span>
+                      <div className="flex gap-1">
+                        <div className="w-6 h-6 rounded-full border border-black/10" style={{ backgroundColor: preset.primary }} />
+                        <div className="w-6 h-6 rounded-full border border-black/10" style={{ backgroundColor: preset.bg }} />
                       </div>
-                      <div className={`p-2.5 text-center bg-card ${isActive ? "bg-primary/5" : ""}`}>
-                        <p className="text-xs font-semibold text-foreground">{theme.label}</p>
-                        <p className="text-xs text-muted-foreground">{theme.desc}</p>
-                        {isActive && (
-                          <Badge variant="default" className="text-xs mt-1">Aktif</Badge>
-                        )}
-                      </div>
+                      <span className="text-[10px] font-medium uppercase tracking-wider">{preset.name}</span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t">
+                <Label>Desain Layout</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { value: "classic_elegant", label: "Classic Elegant", gradient: "from-stone-800 to-stone-600", desc: "Elegan & timeless" },
+                    { value: "minimal_modern", label: "Minimal Modern", gradient: "from-zinc-900 to-zinc-700", desc: "Bersih & kontemporer" },
+                    { value: "romantic_floral", label: "Romantic Floral", gradient: "from-rose-800 to-pink-600", desc: "Romantis & feminin" },
+                    { value: "luxury_gold", label: "Luxury Gold", gradient: "from-yellow-800 to-amber-600", desc: "Mewah & berkesan" },
+                  ].map((theme) => {
+                    const isActive = invitation.theme === theme.value;
+                    return (
+                      <button
+                        key={theme.value}
+                        onClick={() => !isActive && themeMutation.mutate(theme.value)}
+                        disabled={themeMutation.isPending}
+                        className={`rounded-xl overflow-hidden border-2 transition-all text-left ${
+                          isActive ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+                        }`}
+                        data-testid={`theme-${theme.value}`}
+                      >
+                        <div className={`aspect-[3/2] bg-gradient-to-b ${theme.gradient} flex flex-col items-center justify-center gap-1 relative`}>
+                          {themeMutation.isPending && isActive && (
+                            <Loader2 className="w-5 h-5 text-white animate-spin" />
+                          )}
+                          {isActive && !themeMutation.isPending && (
+                            <CheckCircle className="w-5 h-5 text-white" />
+                          )}
+                          <span className="text-white/90 text-xs font-medium">{theme.label}</span>
+                        </div>
+                        <div className={`p-2.5 text-center bg-card ${isActive ? "bg-primary/5" : ""}`}>
+                          <p className="text-xs font-semibold text-foreground">{theme.label}</p>
+                          <p className="text-xs text-muted-foreground">{theme.desc}</p>
+                          {isActive && (
+                            <Badge variant="default" className="text-xs mt-1">Aktif</Badge>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -964,6 +1129,44 @@ export default function Builder() {
                     </div>
                   )}
                 </div>
+                <div className="space-y-2">
+                  <Label>Video Prewedding URL (YouTube/Vimeo)</Label>
+                  <Input
+                    value={contentData.videoUrl}
+                    onChange={e => setContentData(p => ({ ...p, videoUrl: e.target.value }))}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    data-testid="input-video-url"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Masukkan URL video YouTube atau Vimeo untuk ditampilkan di undangan.</p>
+                </div>
+
+                <div className="pt-4 border-t space-y-4">
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold text-foreground">Aktifkan Save The Date</Label>
+                      <p className="text-[10px] text-muted-foreground">Tampilkan halaman pengingat minimalis sebelum undangan resmi dibuka</p>
+                    </div>
+                    <Switch
+                      checked={settingsData.saveTheDateEnabled}
+                      onCheckedChange={checked => setSettingsData(p => ({ ...p, saveTheDateEnabled: checked }))}
+                      data-testid="switch-save-the-date"
+                    />
+                  </div>
+
+                  {settingsData.saveTheDateEnabled && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                      <Label>Pesan Save The Date (Opsional)</Label>
+                      <Textarea
+                        value={settingsData.saveTheDateMessage}
+                        onChange={e => setSettingsData(p => ({ ...p, saveTheDateMessage: e.target.value }))}
+                        placeholder="Mohon simpan tanggal pernikahan kami..."
+                        rows={2}
+                        data-testid="input-save-the-date-message"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <SaveButton
                   isPending={settingsMutation.isPending}
                   savedKey={savedSection}

@@ -7,9 +7,10 @@ import {
 import {
   LayoutDashboard, Mail, CheckSquare, MessageSquare,
   Gift, BarChart3, CreditCard, Settings, Heart, LogOut, Crown,
-  Images, Shield, Globe, Image,
+  Images, Shield, Globe, Image, Moon, Sun,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -45,6 +46,7 @@ const navGroups = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (url: string, exact?: boolean) => {
     if (exact) return location === url;
@@ -146,18 +148,32 @@ export function AppSidebar() {
               </span>
             </div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={logout}
-                className="p-1.5 rounded-md text-muted-foreground hover-elevate shrink-0"
-                data-testid="button-logout"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Logout</TooltipContent>
-          </Tooltip>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={toggleTheme}
+                  className="p-1.5 rounded-md text-muted-foreground hover-elevate shrink-0"
+                  data-testid="button-toggle-theme"
+                >
+                  {theme === "light" ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Toggle Theme</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={logout}
+                  className="p-1.5 rounded-md text-muted-foreground hover-elevate shrink-0"
+                  data-testid="button-logout"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Logout</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

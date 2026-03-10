@@ -5,9 +5,11 @@ import {
   LayoutDashboard, Users, Mail, LogOut, Heart, Shield,
   Star, HelpCircle, CreditCard, Receipt, Settings, Globe,
   FileText, Menu, X, Palette, Tag, Share2, LayoutTemplate,
+  Moon, Sun,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/theme-provider";
 
 const navGroups = [
   {
@@ -63,6 +65,7 @@ function LoadingScreen() {
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, isLoading, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (isLoading) return <LoadingScreen />;
@@ -129,6 +132,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             Dashboard User
           </div>
         </Link>
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-2.5 h-8 px-2.5 rounded-md text-sm font-medium text-foreground/60 hover:text-foreground hover:bg-muted w-full transition-colors"
+          data-testid="admin-button-toggle-theme"
+        >
+          {theme === "light" ? <Moon className="w-3.5 h-3.5 shrink-0" /> : <Sun className="w-3.5 h-3.5 shrink-0" />}
+          Toggle Theme
+        </button>
         <button
           onClick={logout}
           className="flex items-center gap-2.5 h-8 px-2.5 rounded-md text-sm font-medium text-foreground/60 hover:text-destructive hover:bg-destructive/10 w-full transition-colors"

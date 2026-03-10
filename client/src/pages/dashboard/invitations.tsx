@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle, Globe, GlobeLock, Share2, CopyPlus, Users, QrCode } from "lucide-react";
+import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle, Globe, GlobeLock, Share2, CopyPlus, Users, QrCode, Calendar } from "lucide-react";
+import { SiFacebook } from "react-icons/si";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -310,12 +311,22 @@ export default function Invitations() {
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Preview — draft goes to /preview/:id, published opens live */}
                     {inv.status === "published" ? (
-                      <a href={`/invite/${inv.slug}`} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="ghost" className="gap-1.5" title="Buka undangan" data-testid={`button-open-live-${inv.id}`}>
-                          <ExternalLink className="w-4 h-4" />
-                          <span className="hidden sm:inline">Buka</span>
-                        </Button>
-                      </a>
+                      <div className="flex items-center gap-1">
+                        <a href={`/invite/${inv.slug}`} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" variant="ghost" className="gap-1.5" title="Buka undangan" data-testid={`button-open-live-${inv.id}`}>
+                            <ExternalLink className="w-4 h-4" />
+                            <span className="hidden sm:inline">Buka</span>
+                          </Button>
+                        </a>
+                        {inv.saveTheDateEnabled && (
+                          <a href={`/save-the-date/${inv.slug}`} target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="ghost" className="gap-1.5" title="Save The Date" data-testid={`button-std-live-${inv.id}`}>
+                              <Calendar className="w-4 h-4" />
+                              <span className="hidden sm:inline text-[10px]">STD</span>
+                            </Button>
+                          </a>
+                        )}
+                      </div>
                     ) : (
                       <Link href={`/preview/${inv.id}`}>
                         <Button size="sm" variant="ghost" className="gap-1.5" title="Preview draft" data-testid={`button-preview-draft-${inv.id}`}>
@@ -343,6 +354,16 @@ export default function Invitations() {
                             <Copy className="w-4 h-4 text-muted-foreground shrink-0" />
                             Salin Link
                           </button>
+                          <a
+                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/invite/${inv.slug}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 w-full px-2 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                            data-testid={`button-share-fb-${inv.id}`}
+                          >
+                            <SiFacebook className="w-4 h-4 text-blue-600 shrink-0" />
+                            Facebook
+                          </a>
                           <a
                             href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Kami mengundang Anda ke pernikahan kami! 💕\n${window.location.origin}/invite/${inv.slug}`)}`}
                             target="_blank"

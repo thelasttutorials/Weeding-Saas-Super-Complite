@@ -10,10 +10,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Calendar, Clock, Heart, Copy, ExternalLink, Music, Video, Gift, MessageCircle, Users, ChevronDown, CheckCircle, Loader2, Share2 } from "lucide-react";
-import type { FullInvitation, GuestMessage, WeddingTheme, WeddingThemeBlock } from "@shared/schema";
+import { MapPin, Calendar, Clock, Heart, Copy, ExternalLink, Music, Video, Gift, MessageCircle, Users, ChevronDown, CheckCircle, Loader2, Share2, Facebook, Mail } from "lucide-react";
+import type { FullInvitation, GuestMessage, WeddingTheme, WeddingThemeBlock, LoveStoryItem } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import ThemeRenderer from "@/components/theme-renderer";
+import { Lightbox } from "@/components/lightbox";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface PublicInvitation extends FullInvitation {
+  userPlan?: string;
+  loveStory?: LoveStoryItem[];
+}
 
 const rsvpSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter"),
@@ -67,17 +75,26 @@ function Countdown({ targetDate }: { targetDate: string }) {
   );
 }
 
-function getThemeStyles(theme: string) {
-  switch (theme) {
-    case "minimal_modern":
-      return { bg: "bg-zinc-900", accent: "text-zinc-100", overlay: "from-zinc-900/90 to-zinc-800/70", card: "bg-zinc-800/80 border-zinc-700", btn: "bg-white text-zinc-900" };
-    case "romantic_floral":
-      return { bg: "bg-rose-950", accent: "text-rose-200", overlay: "from-rose-950/90 to-pink-900/70", card: "bg-rose-900/60 border-rose-800", btn: "bg-rose-400 text-white" };
-    case "luxury_gold":
-      return { bg: "bg-yellow-950", accent: "text-amber-200", overlay: "from-yellow-950/90 to-amber-900/70", card: "bg-yellow-900/60 border-amber-800", btn: "bg-amber-400 text-yellow-950" };
-    default: // classic_elegant
-      return { bg: "bg-stone-950", accent: "text-stone-200", overlay: "from-stone-950/90 to-stone-800/70", card: "bg-stone-800/60 border-stone-700", btn: "bg-white text-stone-900" };
-  }
+function getThemeStyles(theme: string, preset?: string) {
+  const presets: Record<string, any> = {
+    'classic': { primary: '#B8960C', accent: '#B8960C', bg: '#FDFCF0', text: '#44403C', btn: '#B8960C', btnText: '#FFFFFF', card: 'rgba(184, 150, 12, 0.05)', border: 'rgba(184, 150, 12, 0.2)' },
+    'rose_gold': { primary: '#C9956B', accent: '#C9956B', bg: '#FFF5F0', text: '#57534E', btn: '#C9956B', btnText: '#FFFFFF', card: 'rgba(201, 149, 107, 0.05)', border: 'rgba(201, 149, 107, 0.2)' },
+    'sage': { primary: '#6B7C5C', accent: '#6B7C5C', bg: '#F0F4F0', text: '#44403C', btn: '#6B7C5C', btnText: '#FFFFFF', card: 'rgba(107, 124, 92, 0.05)', border: 'rgba(107, 124, 92, 0.2)' },
+    'black': { primary: '#1A1A1A', accent: '#444444', bg: '#F5F5F5', text: '#1A1A1A', btn: '#1A1A1A', btnText: '#FFFFFF', card: 'rgba(26, 26, 26, 0.05)', border: 'rgba(26, 26, 26, 0.2)' },
+    'white': { primary: '#A8A29E', accent: '#78716C', bg: '#FFFFFF', text: '#292524', btn: '#292524', btnText: '#FFFFFF', card: 'rgba(120, 113, 108, 0.05)', border: 'rgba(120, 113, 108, 0.2)' },
+  };
+
+  const activePreset = presets[preset || 'classic'] || presets.classic;
+
+  const themeStyles = {
+    minimal_modern: { bg: "bg-zinc-900", accent: "text-zinc-100", overlay: "from-zinc-900/90 to-zinc-800/70", card: "bg-zinc-800/80 border-zinc-700", btn: "bg-white text-zinc-900" },
+    romantic_floral: { bg: "bg-rose-950", accent: "text-rose-200", overlay: "from-rose-950/90 to-pink-900/70", card: "bg-rose-900/60 border-rose-800", btn: "bg-rose-400 text-white" },
+    luxury_gold: { bg: "bg-yellow-950", accent: "text-amber-200", overlay: "from-yellow-950/90 to-amber-900/70", card: "bg-yellow-900/60 border-amber-800", btn: "bg-amber-400 text-yellow-950" },
+    classic_elegant: { bg: "bg-stone-950", accent: "text-stone-200", overlay: "from-stone-950/90 to-stone-800/70", card: "bg-stone-800/60 border-stone-700", btn: "bg-white text-stone-900" }
+  };
+
+  const base = themeStyles[theme as keyof typeof themeStyles] || themeStyles.classic_elegant;
+  return { ...base, preset: activePreset };
 }
 
 export default function InvitePage() {
@@ -90,11 +107,23 @@ export default function InvitePage() {
   const [showGiftConfirm, setShowGiftConfirm] = useState(false);
   const [copyingGift, setCopyingGift] = useState<string | null>(null);
   const [giftConfirmData, setGiftConfirmData] = useState({ name: "", amount: "", message: "" });
+  const [showQrisModal, setShowQrisModal] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const params = new URLSearchParams(search);
-  const guestName = params.get("to") || "";
+  const guestToken = params.get("guest") || "";
+  const guestNameTo = params.get("to") || "";
 
-  const { data: invitation, isLoading, error } = useQuery<FullInvitation>({
+  const { data: guestData } = useQuery<{ name: string, eventAssignment: string }>({
+    queryKey: ["/api/guests/token", guestToken],
+    enabled: !!guestToken,
+  });
+
+  const guestName = guestData?.name || guestNameTo || "";
+  const eventAssignment = guestData?.eventAssignment || "both";
+
+  const { data: invitation, isLoading, error } = useQuery<PublicInvitation>({
     queryKey: ["/api/public", slug],
     queryFn: () => fetch(`/api/public/${slug}`).then(r => {
       if (!r.ok) throw new Error("Invitation not found");
@@ -148,6 +177,13 @@ export default function InvitePage() {
     defaultValues: { name: guestName, message: "" },
   });
 
+  useEffect(() => {
+    if (guestName) {
+      rsvpForm.setValue("name", guestName);
+      msgForm.setValue("name", guestName);
+    }
+  }, [guestName, rsvpForm, msgForm]);
+
   const rsvpMutation = useMutation({
     mutationFn: (data: z.infer<typeof rsvpSchema>) =>
       apiRequest("POST", `/api/public/${slug}/rsvp`, data),
@@ -172,6 +208,19 @@ export default function InvitePage() {
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const [playingMusic, setPlayingMusic] = useState(false);
+  const [audio] = useState(() => new Audio());
+
+  useEffect(() => {
+    if (!invitation?.content?.backgroundMusic || !invitation.content.musicEnabled) return;
+    audio.src = invitation.content.backgroundMusic;
+    audio.loop = true;
+    return () => {
+      audio.pause();
+      audio.src = "";
+    };
+  }, [invitation, audio]);
 
   const copyGiftNumber = (num: string, id: string) => {
     navigator.clipboard.writeText(num);
@@ -217,29 +266,6 @@ export default function InvitePage() {
     );
   }
 
-  const [playingMusic, setPlayingMusic] = useState(false);
-  const [audio] = useState(() => new Audio());
-
-  useEffect(() => {
-    if (!invitation?.content?.backgroundMusic || !invitation.content.musicEnabled) return;
-    
-    audio.src = invitation.content.backgroundMusic;
-    audio.loop = true;
-    
-    // Autoplay might be blocked, so we'll handle it via an interaction or opening of the invitation
-    const playAudio = () => {
-      audio.play().then(() => setPlayingMusic(true)).catch(() => setPlayingMusic(false));
-    };
-
-    // If invitation is loaded, try to play when user interacts (like clicking "Buka Undangan")
-    // For now we just prepare it.
-    
-    return () => {
-      audio.pause();
-      audio.src = "";
-    };
-  }, [invitation, audio]);
-
   const toggleMusic = () => {
     if (playingMusic) {
       audio.pause();
@@ -248,11 +274,6 @@ export default function InvitePage() {
       audio.play().then(() => setPlayingMusic(true));
     }
   };
-
-  const styles = getThemeStyles(invitation.theme);
-  const couple = invitation.couple;
-  const events = invitation.events;
-  const content = invitation.content;
 
   const formatDate = (d: string) => {
     if (!d) return "";
@@ -268,8 +289,75 @@ export default function InvitePage() {
     return `${hour > 12 ? hour - 12 : hour}.${m} ${hour >= 12 ? "WIB" : "WIB"}`;
   };
 
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
+  const getCalendarLink = (event: { title: string, date: string, time: string, venue: string }) => {
+    const title = encodeURIComponent(event.title);
+    const location = encodeURIComponent(event.venue);
+    // Simple date format for Google Calendar (YYYYMMDDTHHMMSSZ)
+    // We assume WIB (UTC+7)
+    const d = new Date(event.date);
+    const dateStr = d.toISOString().replace(/-|:|\.\d+/g, "");
+    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=Undangan+Pernikahan&location=${location}&sf=true&output=xml`;
+  };
+
+  const downloadICS = (event: { title: string, date: string, time: string, venue: string }) => {
+    const d = new Date(event.date);
+    const dateStr = d.toISOString().replace(/-|:|\.\d+/g, "").split("T")[0];
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:${dateStr}T000000Z
+DTEND:${dateStr}T235959Z
+SUMMARY:${event.title}
+LOCATION:${event.venue}
+DESCRIPTION:Undangan Pernikahan
+END:VEVENT
+END:VCALENDAR`;
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute("download", "event.ics");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getWazeLink = (venue: string) => `https://waze.com/ul?q=${encodeURIComponent(venue)}&navigate=yes`;
+  const getAppleMapsLink = (venue: string) => `https://maps.apple.com/?q=${encodeURIComponent(venue)}`;
+
+  const styles = getThemeStyles(invitation.theme, invitation.content?.colorPreset);
+  const couple = invitation.couple;
+  const events = invitation.events;
+  const content = invitation.content;
+  const gallery = invitation.gallery;
+
   return (
-    <div className={`min-h-screen ${styles.bg} font-serif`} style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+    <div 
+      className={`min-h-screen ${styles.bg} font-serif`} 
+      style={{ 
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        ["--invite-primary" as any]: styles.preset.primary,
+        ["--invite-accent" as any]: styles.preset.accent,
+        ["--invite-bg" as any]: styles.preset.bg,
+        ["--invite-text" as any]: styles.preset.text,
+        ["--invite-btn" as any]: styles.preset.btn,
+        ["--invite-btn-text" as any]: styles.preset.btnText,
+        ["--invite-card" as any]: styles.preset.card,
+        ["--invite-border" as any]: styles.preset.border,
+      }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: `
+        .invite-custom-bg { background-color: var(--invite-bg); color: var(--invite-text); }
+        .invite-custom-text-primary { color: var(--invite-primary); }
+        .invite-custom-btn { background-color: var(--invite-btn); color: var(--invite-btn-text); }
+        .invite-custom-card { background-color: var(--invite-card); border-color: var(--invite-border); }
+        .invite-custom-border { border-color: var(--invite-border); }
+        .invite-custom-accent { color: var(--invite-accent); }
+      `}} />
       {/* Music Control */}
       {content?.musicEnabled && content?.showMusicControl && (
         <button
@@ -334,15 +422,15 @@ export default function InvitePage() {
                 </div>
               )}
               <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-3">
-                {couple.brideName}
+                {couple?.brideName}
                 <span className="block text-2xl sm:text-3xl text-white/60 my-2">&</span>
-                {couple.groomName}
+                {couple?.groomName}
               </h1>
             </>
           )}
 
           {events?.receptionDate && (
-            <p className={`${styles.accent} text-sm tracking-widest mb-8`}>
+            <p className="invite-custom-accent text-sm tracking-widest mb-8">
               {formatDate(events.receptionDate)}
             </p>
           )}
@@ -360,7 +448,7 @@ export default function InvitePage() {
                 audio.play().then(() => setPlayingMusic(true)).catch(err => console.error("Autoplay failed:", err));
               }
             }}
-            className="px-8 py-3 rounded-full bg-white text-stone-900 font-sans font-bold text-sm hover-elevate active-elevate-2 transition-all mb-8"
+            className="px-8 py-3 rounded-full bg-white text-stone-900 font-sans font-bold text-sm hover-elevate active-elevate-2 transition-all mb-8 invite-custom-btn"
             data-testid="button-open-invitation"
           >
             Buka Undangan
@@ -429,14 +517,42 @@ export default function InvitePage() {
         </section>
       )}
 
+      {/* Love Story */}
+      {invitation.loveStory && invitation.loveStory.length > 0 && (
+        <section className="py-16 px-4 bg-white/5">
+          <div className="max-w-2xl mx-auto">
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-12 text-center">Perjalanan Cinta Kami</p>
+            <div className="relative border-l border-white/10 ml-4 sm:ml-auto sm:mr-auto pl-8 sm:pl-0">
+              {invitation.loveStory.map((item, idx) => (
+                <div key={item.id} className={`relative mb-12 ${idx % 2 === 0 ? 'sm:pr-1/2 sm:text-right sm:ml-0 sm:mr-auto' : 'sm:pl-1/2 sm:text-left sm:ml-auto sm:mr-0'}`}>
+                  {/* Dot */}
+                  <div className="absolute top-0 -left-[33px] sm:left-1/2 sm:-ml-1.5 w-3 h-3 rounded-full bg-white/30 border border-white/50" style={{ backgroundColor: 'var(--invite-primary)' }} />
+                  
+                  <div className={`relative ${idx % 2 === 0 ? 'sm:mr-10' : 'sm:ml-10'}`}>
+                    <p className="invite-custom-accent text-xs font-sans font-bold uppercase tracking-tighter mb-1">{item.dateLabelText}</p>
+                    <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                    {item.imageUrl && (
+                      <div className={`mb-3 rounded-lg overflow-hidden border border-white/10 aspect-video ${idx % 2 === 0 ? 'sm:ml-auto' : ''} max-w-[300px]`}>
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <p className="text-white/60 text-sm leading-relaxed">{item.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Event Details */}
       {events && (events.akadDate || events.receptionDate) && (
         <section className="py-16 px-4">
           <div className="max-w-2xl mx-auto">
             <p className="text-white/40 text-xs uppercase tracking-widest mb-8 text-center">Detail Acara</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {events.akadDate && (
-                <div className={`p-6 rounded-xl border ${styles.card} text-center`}>
+              {events.akadDate && (eventAssignment === "both" || eventAssignment === "akad") && (
+                <div className={`p-6 rounded-xl border ${styles.card} text-center invite-custom-card`}>
                   <p className="text-white/50 text-xs uppercase tracking-widest mb-3">Akad Nikah</p>
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Calendar className="w-4 h-4 text-white/50" />
@@ -455,17 +571,37 @@ export default function InvitePage() {
                     </div>
                   )}
                   {events.akadMapsLink && (
-                    <a href={events.akadMapsLink} target="_blank" rel="noopener noreferrer">
-                      <button className={`text-xs px-3 py-1.5 rounded-full ${styles.btn} font-sans`}>
-                        Lihat Peta
-                      </button>
-                    </a>
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                      <a href={events.akadMapsLink} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate">
+                          <MapPin className="w-3 h-3" /> Google Maps
+                        </Button>
+                      </a>
+                      <a href={getWazeLink(events.akadVenue)} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate">
+                          <ExternalLink className="w-3 h-3" /> Waze
+                        </Button>
+                      </a>
+                      <a href={getAppleMapsLink(events.akadVenue)} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate">
+                          <MapPin className="w-3 h-3" /> Apple Maps
+                        </Button>
+                      </a>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate"
+                        onClick={() => downloadICS({ title: `Akad Nikah ${couple?.brideName ?? ""} & ${couple?.groomName ?? ""}`, date: events.akadDate, time: events.akadTime, venue: events.akadVenue })}
+                      >
+                        <Calendar className="w-3 h-3" /> + Calendar
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
 
-              {events.receptionDate && (
-                <div className={`p-6 rounded-xl border ${styles.card} text-center`}>
+              {events.receptionDate && (eventAssignment === "both" || eventAssignment === "reception") && (
+                <div className={`p-6 rounded-xl border ${styles.card} text-center invite-custom-card`}>
                   <p className="text-white/50 text-xs uppercase tracking-widest mb-3">Resepsi Pernikahan</p>
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Calendar className="w-4 h-4 text-white/50" />
@@ -484,11 +620,31 @@ export default function InvitePage() {
                     </div>
                   )}
                   {events.receptionMapsLink && (
-                    <a href={events.receptionMapsLink} target="_blank" rel="noopener noreferrer">
-                      <button className={`text-xs px-3 py-1.5 rounded-full ${styles.btn} font-sans`}>
-                        Lihat Peta
-                      </button>
-                    </a>
+                    <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                      <a href={events.receptionMapsLink} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate">
+                          <MapPin className="w-3 h-3" /> Google Maps
+                        </Button>
+                      </a>
+                      <a href={getWazeLink(events.receptionVenue)} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate">
+                          <ExternalLink className="w-3 h-3" /> Waze
+                        </Button>
+                      </a>
+                      <a href={getAppleMapsLink(events.receptionVenue)} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate">
+                          <MapPin className="w-3 h-3" /> Apple Maps
+                        </Button>
+                      </a>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 text-[10px] sm:text-xs rounded-full gap-1.5 no-default-hover-elevate"
+                        onClick={() => downloadICS({ title: `Resepsi Pernikahan ${couple?.brideName ?? ""} & ${couple?.groomName ?? ""}`, date: events.receptionDate, time: events.receptionTime, venue: events.receptionVenue })}
+                      >
+                        <Calendar className="w-3 h-3" /> + Calendar
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -498,17 +654,38 @@ export default function InvitePage() {
       )}
 
       {/* Gallery */}
-      {invitation.gallery && invitation.gallery.length > 0 && (
+      {gallery && gallery.length > 0 && (
         <section className="py-16 px-4">
-          <div className="max-w-2xl mx-auto">
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-8 text-center">Galeri</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {invitation.gallery.map((img) => (
-                <div key={img.id} className="aspect-square rounded-lg overflow-hidden">
-                  <img src={img.imageUrl} alt={img.caption || ""} className="w-full h-full object-cover" />
+          <div className="max-w-4xl mx-auto">
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-8 text-center">Galeri Foto</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+              {gallery.map((img, idx) => (
+                <div 
+                  key={img.id} 
+                  className="aspect-square rounded-xl overflow-hidden cursor-pointer group hover-elevate"
+                  onClick={() => openLightbox(idx)}
+                  data-testid={`gallery-image-${idx}`}
+                >
+                  <img src={img.imageUrl} alt={img.caption || ""} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 </div>
               ))}
             </div>
+
+            {content?.videoUrl && (
+              <div className="mt-12 aspect-video w-full max-w-2xl mx-auto rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+                <iframe
+                  src={content.videoUrl.includes("youtube.com") 
+                    ? `https://www.youtube.com/embed/${content.videoUrl.split("v=")[1]?.split("&")[0] || content.videoUrl.split("/").pop()}`
+                    : content.videoUrl.includes("vimeo.com")
+                    ? `https://player.vimeo.com/video/${content.videoUrl.split("/").pop()}`
+                    : content.videoUrl
+                  }
+                  className="w-full h-full"
+                  allowFullScreen
+                  title="Wedding Video"
+                />
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -718,30 +895,74 @@ export default function InvitePage() {
             {invitation.giftAccounts && invitation.giftAccounts.length > 0 && (
               <div className="space-y-3 mb-6">
                 {invitation.giftAccounts.map((gift) => (
-                  <div key={gift.id} className={`p-4 rounded-xl border ${styles.card}`}>
+                  <div key={gift.id} className={`p-4 rounded-xl border ${styles.card} invite-custom-card`}>
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-white/50 text-xs uppercase tracking-widest mb-1 font-sans">
-                          {gift.type === "bank" ? gift.bankName : gift.walletName}
+                        <p className="invite-custom-accent text-white/50 text-xs uppercase tracking-widest mb-1 font-sans">
+                          {gift.type === "bank" ? gift.bankName : (gift.type as string) === "qris" ? "QRIS" : gift.walletName}
                         </p>
-                        <p className="text-white font-mono text-base">
-                          {gift.type === "bank" ? gift.accountNumber : gift.walletNumber}
-                        </p>
-                        <p className="text-white/60 text-xs font-sans mt-0.5">{gift.accountHolder}</p>
+                        {(gift.type as string) === "qris" ? (
+                          <button
+                            onClick={() => setShowQrisModal(gift.qrisUrl)}
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg ${styles.btn} text-xs font-sans font-bold invite-custom-btn hover-elevate active-elevate-2 transition-all mt-1`}
+                          >
+                            Tampilkan QRIS
+                          </button>
+                        ) : (
+                          <>
+                            <p className="text-white font-mono text-base">
+                              {gift.type === "bank" ? gift.accountNumber : gift.walletNumber}
+                            </p>
+                            <p className="text-white/60 text-xs font-sans mt-0.5">{gift.accountHolder}</p>
+                          </>
+                        )}
                       </div>
-                      <button
-                        onClick={() => copyGiftNumber(gift.type === "bank" ? gift.accountNumber : gift.walletNumber, gift.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${styles.btn} text-xs font-sans font-medium shrink-0`}
-                        data-testid={`button-copy-gift-${gift.id}`}
-                      >
-                        {copyingGift === gift.id ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copyingGift === gift.id ? "Disalin!" : "Salin"}
-                      </button>
+                      {(gift.type as string) !== "qris" && (
+                        <button
+                          onClick={() => copyGiftNumber(gift.type === "bank" ? gift.accountNumber : gift.walletNumber, gift.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${styles.btn} text-xs font-sans font-medium shrink-0 invite-custom-btn`}
+                          data-testid={`button-copy-gift-${gift.id}`}
+                        >
+                          {copyingGift === gift.id ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copyingGift === gift.id ? "Disalin!" : "Salin"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
+            <div className="flex flex-col items-center gap-4 mt-8">
+              <p className="text-white/40 text-xs uppercase tracking-widest">Bagikan Kebahagiaan</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <a 
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Kami mengundang Anda ke pernikahan kami! 💕\n${window.location.origin}/invite/${slug}`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#25D366] text-white font-sans text-xs font-bold hover:scale-105 transition-transform"
+                  data-testid="button-share-whatsapp"
+                >
+                  <Share2 className="w-3.5 h-3.5" /> WhatsApp
+                </a>
+                <a 
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/invite/${slug}`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1877F2] text-white font-sans text-xs font-bold hover:scale-105 transition-transform"
+                  data-testid="button-share-facebook"
+                >
+                  <Facebook className="w-3.5 h-3.5" /> Facebook
+                </a>
+                <a 
+                  href={`mailto:?subject=${encodeURIComponent(`Undangan Pernikahan ${couple?.brideName ?? ""} & ${couple?.groomName ?? ""}`)}&body=${encodeURIComponent(`Kami mengundang Anda ke pernikahan kami! 💕\n\nBuka undangan di: ${window.location.origin}/invite/${slug}`)}`}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-stone-700 text-white font-sans text-xs font-bold hover:scale-105 transition-transform"
+                  data-testid="button-share-email"
+                >
+                  <Mail className="w-3.5 h-3.5" /> Email
+                </a>
+              </div>
+            </div>
 
             {/* Alamat Hadiah Fisik */}
             {invitation.giftAddress && (
@@ -855,7 +1076,7 @@ export default function InvitePage() {
               Ceritakan momen istimewa {couple.brideName} &amp; {couple.groomName} kepada orang tersayang
             </p>
           )}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <button
               onClick={() => {
                 const url = window.location.href;
@@ -863,7 +1084,7 @@ export default function InvitePage() {
                   toast({ title: "Link disalin!", description: "Link undangan berhasil disalin ke clipboard." });
                 });
               }}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border ${styles.card} text-white/70 text-sm font-sans hover:text-white/90 transition-colors`}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border ${styles.card} text-white/70 text-sm font-sans hover:text-white/90 transition-colors shrink-0`}
               data-testid="button-share-copy-link"
             >
               <Copy className="w-4 h-4" />
@@ -875,11 +1096,29 @@ export default function InvitePage() {
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-300 text-sm font-sans hover:bg-green-500/20 transition-colors`}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-300 text-sm font-sans hover:bg-green-500/20 transition-colors shrink-0`}
               data-testid="button-share-whatsapp"
             >
-              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+              <Share2 className="w-4 h-4" />
               WhatsApp
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-blue-600/30 bg-blue-600/10 text-blue-300 text-sm font-sans hover:bg-blue-600/20 transition-colors shrink-0`}
+              data-testid="button-share-facebook"
+            >
+              <Facebook className="w-4 h-4" />
+              Facebook
+            </a>
+            <a
+              href={`mailto:?subject=${encodeURIComponent(`Undangan Pernikahan ${couple?.brideName || ""} & ${couple?.groomName || ""}`)}&body=${encodeURIComponent(`Kami mengundang Anda ke pernikahan kami! 💕\n\nBuka undangan di: ${window.location.href}`)}`}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-stone-500/30 bg-stone-500/10 text-stone-300 text-sm font-sans hover:bg-stone-500/20 transition-colors shrink-0`}
+              data-testid="button-share-email"
+            >
+              <Mail className="w-4 h-4" />
+              Email
             </a>
             <a
               href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(
@@ -887,7 +1126,7 @@ export default function InvitePage() {
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-blue-400/30 bg-blue-400/10 text-blue-300 text-sm font-sans hover:bg-blue-400/20 transition-colors`}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-blue-400/30 bg-blue-400/10 text-blue-300 text-sm font-sans hover:bg-blue-400/20 transition-colors shrink-0`}
               data-testid="button-share-telegram"
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
@@ -914,14 +1153,45 @@ export default function InvitePage() {
             <Heart className="w-5 h-5 text-white/30 fill-current" />
             <div className="h-px w-12 bg-white/10" />
           </div>
+          <p className="text-white/40 text-xs uppercase tracking-widest mb-2 font-sans">Hormat Kami,</p>
           {couple && (
-            <p className="text-white/80 text-xl">
-              {couple.brideName} & {couple.groomName}
-            </p>
+            <h2 className="text-3xl font-bold text-white mb-8">
+              {couple.brideName} &amp; {couple.groomName}
+            </h2>
           )}
-          <p className="text-white/30 text-xs mt-6 font-sans">Made with love by WedSaaS</p>
+
+          {/* Watermark for Free Plan */}
+          {invitation.userPlan === "free" && (
+            <div className="mt-8">
+              <a 
+                href="/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/20 backdrop-blur-sm border border-white/10 hover:bg-black/40 transition-all group"
+              >
+                <span className="text-white/40 text-[10px] font-sans tracking-wide">Made with ❤️</span>
+                <span className="text-white/70 text-[10px] font-sans font-bold group-hover:text-white transition-colors">WedSaaS</span>
+              </a>
+            </div>
+          )}
         </div>
       </section>
+
+      <Dialog open={!!showQrisModal} onOpenChange={() => setShowQrisModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Scan QRIS</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-4">
+            {showQrisModal && (
+              <img src={showQrisModal} alt="QRIS" className="w-full max-w-[300px] h-auto rounded-lg shadow-lg" />
+            )}
+            <p className="mt-4 text-sm text-muted-foreground text-center italic">
+              Silakan scan QRIS di atas melalui aplikasi m-banking atau e-wallet pilihan Anda.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

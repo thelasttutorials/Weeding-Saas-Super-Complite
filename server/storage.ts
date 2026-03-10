@@ -8,6 +8,7 @@ import {
   websiteSettings, seoSettings, weddingThemes, weddingThemeBlocks,
   bankAccounts, payments, fileUploads,
   guests, mediaAssets, customDomains, coupons, couponUsages, referralUsages, landingPageSettings,
+  loveStoryItems, guestEventAssignments,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
@@ -32,6 +33,8 @@ import {
   type Coupon, type InsertCoupon,
   type CouponUsage,
   type ReferralUsage, type LandingPageSettings,
+  type LoveStoryItem, type InsertLoveStoryItem,
+  type GuestEventAssignment, type InsertGuestEventAssignment,
 } from "@shared/schema";
 
 import { randomUUID } from "crypto";
@@ -54,6 +57,13 @@ export interface IStorage {
   updateInvitation(id: string, data: Partial<Invitation>): Promise<Invitation | undefined>;
   deleteInvitation(id: string): Promise<void>;
   incrementViews(id: string): Promise<void>;
+
+  // Love Story
+  getLoveStoryItemsByInvitation(invId: string): Promise<LoveStoryItem[]>;
+  createLoveStoryItem(data: InsertLoveStoryItem): Promise<LoveStoryItem>;
+  updateLoveStoryItem(id: string, data: Partial<LoveStoryItem>): Promise<LoveStoryItem | undefined>;
+  deleteLoveStoryItem(id: string): Promise<void>;
+  reorderLoveStoryItems(invitationId: string, itemIds: string[]): Promise<void>;
 
   // Couple
   getCoupleByInvitation(invId: string): Promise<InvitationCouple | undefined>;
@@ -100,18 +110,19 @@ export interface IStorage {
   getWhiteLabelByUser(userId: string): Promise<WhiteLabelSettings | undefined>;
   upsertWhiteLabel(data: InsertWhiteLabel): Promise<WhiteLabelSettings>;
 
-  // Guest Management
+  // Guests
   getGuestsByInvitation(invId: string): Promise<Guest[]>;
   getGuestById(id: string): Promise<Guest | undefined>;
   getGuestByToken(token: string): Promise<Guest | undefined>;
   createGuest(data: InsertGuest): Promise<Guest>;
   updateGuest(id: string, data: Partial<Guest>): Promise<Guest | undefined>;
   deleteGuest(id: string): Promise<void>;
-  checkInGuest(id: string): Promise<Guest | undefined>;
+  getGuestEventAssignment(guestId: string): Promise<GuestEventAssignment | undefined>;
+  upsertGuestEventAssignment(data: InsertGuestEventAssignment): Promise<GuestEventAssignment>;
   getGuestStats(invId: string): Promise<{
     total: number;
     invited: number;
-    attending: number;
+    rsvpAttending: number;
     checkedIn: number;
   }>;
 
@@ -123,15 +134,15 @@ export interface IStorage {
 
   // Coupons
   getCoupons(): Promise<Coupon[]>;
-  getCoupon(id: string): Promise<Coupon | undefined>;
   getCouponByCode(code: string): Promise<Coupon | undefined>;
   createCoupon(data: InsertCoupon): Promise<Coupon>;
   updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined>;
   deleteCoupon(id: string): Promise<void>;
-  validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discount: number; message?: string }>;
+  validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discountAmount: number; message?: string }>;
 
   // Referrals
-  getReferralStats(userId: string): Promise<{ total: number }>;
+  getReferralStats(userId: string): Promise<{ totalReferrals: number }>;
+  createReferralUsage(referrerId: string, refereeId: string): Promise<void>;
   getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]>;
 
   // Custom Domains
@@ -204,24 +215,6 @@ export interface IStorage {
   getAllUsers(): Promise<Omit<User, "password">[]>;
   getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
 
-  // Guests
-  getGuestsByInvitation(invId: string): Promise<Guest[]>;
-  getGuestById(id: string): Promise<Guest | undefined>;
-  getGuestByToken(token: string): Promise<Guest | undefined>;
-  createGuest(data: InsertGuest): Promise<Guest>;
-  updateGuest(id: string, data: Partial<Guest>): Promise<Guest | undefined>;
-  deleteGuest(id: string): Promise<void>;
-  getGuestStats(invId: string): Promise<{
-    total: number;
-    invited: number;
-    rsvpAttending: number;
-    checkedIn: number;
-  }>;
-
-  // File Uploads
-  createFileUpload(data: InsertFileUpload): Promise<FileUpload>;
-  getFileUploadsByUser(userId: string): Promise<FileUpload[]>;
-
   // Bank Accounts
   getBankAccounts(activeOnly?: boolean): Promise<BankAccount[]>;
   createBankAccount(data: InsertBankAccount): Promise<BankAccount>;
@@ -236,25 +229,6 @@ export interface IStorage {
   getAdminPayments(filters?: { status?: string; search?: string }): Promise<(Payment & { username: string; email: string })[]>;
   expireOverduePayments(): Promise<void>;
   getUniqueCodeConflict(amount: number, code: number): Promise<boolean>;
-
-  // Coupons
-  getCoupons(): Promise<Coupon[]>;
-  getCouponByCode(code: string): Promise<Coupon | undefined>;
-  createCoupon(data: InsertCoupon): Promise<Coupon>;
-  updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined>;
-  deleteCoupon(id: string): Promise<void>;
-  validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discountAmount: number; message?: string }>;
-
-  // Referrals
-  getReferralStats(userId: string): Promise<{ totalReferrals: number }>;
-  createReferralUsage(referrerId: string, refereeId: string): Promise<void>;
-  getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]>;
-
-  // Custom Domains
-  getCustomDomainByUser(userId: string): Promise<CustomDomain | undefined>;
-  upsertCustomDomain(userId: string, domain: string): Promise<CustomDomain>;
-  getAllCustomDomains(): Promise<(CustomDomain & { username: string })[]>;
-  updateCustomDomainStatus(id: string, status: string, adminNotes?: string): Promise<CustomDomain | undefined>;
 
   // Wedding Theme Builder
   getWeddingThemes(): Promise<WeddingTheme[]>;
@@ -388,6 +362,32 @@ export class DatabaseStorage implements IStorage {
 
   async incrementViews(id: string): Promise<void> {
     await this.db.execute(sql`SELECT increment_invitation_views(${id})`);
+  }
+
+  async getLoveStoryItemsByInvitation(invId: string): Promise<LoveStoryItem[]> {
+    return this.db.select().from(loveStoryItems).where(eq(loveStoryItems.invitationId, invId)).orderBy(loveStoryItems.sortOrder);
+  }
+
+  async createLoveStoryItem(data: InsertLoveStoryItem): Promise<LoveStoryItem> {
+    const [item] = await this.db.insert(loveStoryItems).values({ ...data, id: randomUUID() }).returning();
+    return item;
+  }
+
+  async updateLoveStoryItem(id: string, data: Partial<LoveStoryItem>): Promise<LoveStoryItem | undefined> {
+    const [updated] = await this.db.update(loveStoryItems).set(data).where(eq(loveStoryItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLoveStoryItem(id: string): Promise<void> {
+    await this.db.delete(loveStoryItems).where(eq(loveStoryItems.id, id));
+  }
+
+  async reorderLoveStoryItems(invitationId: string, itemIds: string[]): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      for (let i = 0; i < itemIds.length; i++) {
+        await tx.update(loveStoryItems).set({ sortOrder: i }).where(and(eq(loveStoryItems.id, itemIds[i]), eq(loveStoryItems.invitationId, invitationId)));
+      }
+    });
   }
 
   async getCoupleByInvitation(invId: string): Promise<InvitationCouple | undefined> {
@@ -557,6 +557,18 @@ export class DatabaseStorage implements IStorage {
     }).returning();
 
     // Copy related records
+    const loveStory = await this.getLoveStoryItemsByInvitation(id);
+    if (loveStory.length > 0) {
+      await this.db.insert(loveStoryItems).values(
+        loveStory.map(item => ({
+          ...item,
+          id: randomUUID(),
+          invitationId: newId,
+          createdAt: new Date(),
+        }))
+      );
+    }
+
     const couple = await this.getCoupleByInvitation(id);
     if (couple) {
       await this.db.insert(invitationCouples).values({
@@ -682,6 +694,24 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGuest(id: string): Promise<void> {
     await this.db.delete(guests).where(eq(guests.id, id));
+  }
+
+  async getGuestEventAssignment(guestId: string): Promise<GuestEventAssignment | undefined> {
+    const [res] = await this.db.select().from(guestEventAssignments).where(eq(guestEventAssignments.guestId, guestId));
+    return res;
+  }
+
+  async upsertGuestEventAssignment(data: InsertGuestEventAssignment): Promise<GuestEventAssignment> {
+    const existing = await this.getGuestEventAssignment(data.guestId);
+    if (existing) {
+      const [updated] = await this.db.update(guestEventAssignments)
+        .set({ eventType: data.eventType })
+        .where(eq(guestEventAssignments.guestId, data.guestId))
+        .returning();
+      return updated;
+    }
+    const [created] = await this.db.insert(guestEventAssignments).values({ ...data, id: randomUUID() }).returning();
+    return created;
   }
 
   async checkInGuest(id: string): Promise<Guest | undefined> {
@@ -1103,147 +1133,6 @@ export class DatabaseStorage implements IStorage {
 
   // ── Wedding Theme Builder ─────────────────────────────────────────────────
 
-  // Coupons
-  async getCoupons(): Promise<Coupon[]> {
-    return this.db.select().from(coupons).orderBy(desc(coupons.createdAt));
-  }
-
-  async getCouponByCode(code: string): Promise<Coupon | undefined> {
-    const [coupon] = await this.db.select().from(coupons).where(eq(coupons.code, code));
-    return coupon;
-  }
-
-  async createCoupon(data: InsertCoupon): Promise<Coupon> {
-    const [coupon] = await this.db.insert(coupons).values({ ...data, id: randomUUID() }).returning();
-    return coupon;
-  }
-
-  async updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined> {
-    const [updated] = await this.db.update(coupons).set(data).where(eq(coupons.id, id)).returning();
-    return updated;
-  }
-
-  async deleteCoupon(id: string): Promise<void> {
-    await this.db.delete(coupons).where(eq(coupons.id, id));
-  }
-
-  async validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discountAmount: number; message?: string }> {
-    const coupon = await this.getCouponByCode(code);
-    if (!coupon) return { valid: false, discountAmount: 0, message: "Kupon tidak ditemukan" };
-    if (!coupon.isActive) return { valid: false, discountAmount: 0, message: "Kupon tidak aktif" };
-    
-    const now = new Date();
-    if (coupon.validFrom && now < coupon.validFrom) return { valid: false, discountAmount: 0, message: "Kupon belum berlaku" };
-    if (coupon.validUntil && now > coupon.validUntil) return { valid: false, discountAmount: 0, message: "Kupon sudah kadaluarsa" };
-    
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return { valid: false, discountAmount: 0, message: "Kuota kupon sudah habis" };
-    
-    if (amount < coupon.minAmount) return { valid: false, discountAmount: 0, message: `Minimal transaksi ${coupon.minAmount}` };
-    
-    if (coupon.applicablePlans && coupon.applicablePlans.length > 0 && !coupon.applicablePlans.includes(plan)) {
-      return { valid: false, discountAmount: 0, message: "Kupon tidak berlaku untuk paket ini" };
-    }
-
-    let discountAmount = 0;
-    if (coupon.discountType === "percentage") {
-      discountAmount = Math.floor((amount * coupon.discountValue) / 100);
-    } else {
-      discountAmount = coupon.discountValue;
-    }
-
-    return { valid: true, discountAmount: Math.min(discountAmount, amount) };
-  }
-
-  // Referrals
-  async getReferralStats(userId: string): Promise<{ totalReferrals: number }> {
-    const [res] = await this.db.select({ count: sql<number>`count(*)::int` }).from(referralUsages).where(eq(referralUsages.referrerId, userId));
-    return { totalReferrals: res?.count || 0 };
-  }
-
-  async createReferralUsage(referrerId: string, refereeId: string): Promise<void> {
-    await this.db.insert(referralUsages).values({
-      id: randomUUID(),
-      referrerId,
-      refereeId,
-    });
-  }
-
-  async getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]> {
-    const results = await this.db.execute(sql`
-      SELECT ru.*, u1.username as referrer_username, u2.username as referee_username
-      FROM referral_usages ru
-      JOIN users u1 ON ru.referrer_id = u1.id
-      JOIN users u2 ON ru.referee_id = u2.id
-      ORDER BY ru.created_at DESC
-    `);
-    
-    return results.rows.map((row: any) => ({
-      id: row.id,
-      referrerId: row.referrer_id,
-      refereeId: row.referee_id,
-      createdAt: new Date(row.created_at),
-      referrerUsername: row.referrer_username,
-      refereeUsername: row.referee_username,
-    }));
-  }
-
-  // Custom Domains
-  async getCustomDomainByUser(userId: string): Promise<CustomDomain | undefined> {
-    const [domain] = await this.db.select().from(customDomains).where(eq(customDomains.userId, userId));
-    return domain;
-  }
-
-  async upsertCustomDomain(userId: string, domain: string): Promise<CustomDomain> {
-    const existing = await this.getCustomDomainByUser(userId);
-    if (existing) {
-      const [updated] = await this.db.update(customDomains)
-        .set({ domain, status: "pending", updatedAt: new Date() })
-        .where(eq(customDomains.userId, userId))
-        .returning();
-      return updated;
-    }
-    const [created] = await this.db.insert(customDomains).values({
-      id: randomUUID(),
-      userId,
-      domain,
-      status: "pending",
-    }).returning();
-    return created;
-  }
-
-  async getAllCustomDomains(): Promise<(CustomDomain & { username: string })[]> {
-    const results = await this.db.execute(sql`
-      SELECT cd.*, u.username
-      FROM custom_domains cd
-      JOIN users u ON cd.user_id = u.id
-      ORDER BY cd.created_at DESC
-    `);
-
-    return results.rows.map((row: any) => ({
-      id: row.id,
-      userId: row.user_id,
-      domain: row.domain,
-      status: row.status as any,
-      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
-      adminNotes: row.admin_notes,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-      username: row.username,
-    }));
-  }
-
-  async updateCustomDomainStatus(id: string, status: string, adminNotes?: string): Promise<CustomDomain | undefined> {
-    const updateData: any = { status, updatedAt: new Date() };
-    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
-    if (status === "active") updateData.verifiedAt = new Date();
-
-    const [updated] = await this.db.update(customDomains)
-      .set(updateData)
-      .where(eq(customDomains.id, id))
-      .returning();
-    return updated;
-  }
-
   async getWeddingThemes(): Promise<WeddingTheme[]> {
     return this.db.select().from(weddingThemes).orderBy(desc(weddingThemes.createdAt));
   }
@@ -1450,23 +1339,6 @@ export class DatabaseStorage implements IStorage {
     return this.db.select().from(fileUploads)
       .where(eq(fileUploads.uploadedBy, userId))
       .orderBy(desc(fileUploads.createdAt));
-  }
-  async duplicateInvitation(id: string): Promise<Invitation> {
-    const [source] = await this.db.select().from(invitations).where(eq(invitations.id, id));
-    if (!source) throw new Error("Invitation not found");
-
-    const newId = randomUUID();
-    const [duplicated] = await this.db.insert(invitations).values({
-      ...source,
-      id: newId,
-      title: `${source.title} (Copy)`,
-      slug: `${source.slug}-${Math.random().toString(36).substring(2, 6)}`,
-      status: "draft",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).returning();
-
-    return duplicated;
   }
 }
 

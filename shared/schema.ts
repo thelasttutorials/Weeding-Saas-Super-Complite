@@ -38,6 +38,8 @@ export const invitations = pgTable("invitations", {
   views: integer("views").notNull().default(0),
   publishedAt: timestamp("published_at"),
   customThemeId: varchar("custom_theme_id"),
+  saveTheDateEnabled: boolean("save_the_date_enabled").notNull().default(false),
+  saveTheDateMessage: text("save_the_date_message").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -82,6 +84,8 @@ export const invitationContent = pgTable("invitation_content", {
   enableRsvp: boolean("enable_rsvp").notNull().default(true),
   rsvpDeadline: text("rsvp_deadline").notNull().default(""),
   maxGuests: integer("max_guests").notNull().default(2),
+  colorPreset: text("color_preset").notNull().default("classic"),
+  videoUrl: text("video_url").notNull().default(""),
 });
 
 export const invitationGallery = pgTable("invitation_gallery", {
@@ -143,6 +147,7 @@ export const giftAccounts = pgTable("gift_accounts", {
   accountHolder: text("account_holder").notNull().default(""),
   walletName: text("wallet_name").notNull().default(""),
   walletNumber: text("wallet_number").notNull().default(""),
+  qrisUrl: text("qris_url").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -529,6 +534,34 @@ export type CouponUsage = typeof couponUsages.$inferSelect;
 export type ReferralUsage = typeof referralUsages.$inferSelect;
 export type LandingPageSettings = typeof landingPageSettings.$inferSelect;
 export type InsertLandingPageSettings = z.infer<typeof insertLandingPageSettingsSchema>;
+
+// ── Love Story Timeline ──────────────────────────────────────────────────────
+export const loveStoryItems = pgTable("love_story_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invitationId: varchar("invitation_id").notNull().references(() => invitations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  dateLabelText: text("date_label").notNull().default(""),
+  description: text("description").notNull().default(""),
+  imageUrl: text("image_url").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertLoveStoryItemSchema = createInsertSchema(loveStoryItems).omit({ id: true, createdAt: true });
+export type LoveStoryItem = typeof loveStoryItems.$inferSelect;
+export type InsertLoveStoryItem = z.infer<typeof insertLoveStoryItemSchema>;
+
+// ── Guest Event Assignments ───────────────────────────────────────────────────
+export const guestEventAssignments = pgTable("guest_event_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  guestId: varchar("guest_id").notNull().unique().references(() => guests.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull().default("both"), // akad | reception | both
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertGuestEventAssignmentSchema = createInsertSchema(guestEventAssignments).omit({ id: true, createdAt: true });
+export type GuestEventAssignment = typeof guestEventAssignments.$inferSelect;
+export type InsertGuestEventAssignment = z.infer<typeof insertGuestEventAssignmentSchema>;
 
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;

@@ -17,16 +17,17 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - `/` - Marketing landing page (CMS-driven from landing_page_settings)
 - `/login` - Login page (with referral code awareness)
 - `/register` - Register page (optional referral_code field)
-- `/invite/:slug` - Public wedding invitation page (personalized via `?guest=TOKEN`)
+- `/invite/:slug` - Public wedding invitation page (personalized via `?guest=TOKEN`, event-filtered)
+- `/save-the-date/:slug` - Save The Date page (simplified pre-invitation page, only if enabled)
 - `/preview/:id` - Draft/published invitation preview (auth required)
 - `/dashboard` - Dashboard overview with guest stats widget
-- `/dashboard/invitations` - Invitation list with Duplicate button
-- `/dashboard/invitations/:id/guests` - Guest management (CRUD, categories, QR)
+- `/dashboard/invitations` - Invitation list with Duplicate + Save The Date link
+- `/dashboard/invitations/:id/guests` - Guest management (CRUD, categories, event assignment, QR)
 - `/dashboard/invitations/:id/checkin` - QR Check-in scanner + manual token
-- `/dashboard/builder/:id` - Builder (5 tabs: couple, events, content, theme, settings) + AI Copy Assistant
+- `/dashboard/builder/:id` - Builder (5 tabs: couple, events, content, theme, settings) + AI Copy + Love Story + Color Presets + Video URL + Save The Date
 - `/dashboard/rsvp` - RSVP management
 - `/dashboard/messages` - Guest messages (hide/show + sort)
-- `/dashboard/gifts` - Digital gift accounts (bank/e-wallet)
+- `/dashboard/gifts` - Digital gift accounts (bank/e-wallet/QRIS)
 - `/dashboard/gallery` - Gallery photo management
 - `/dashboard/analytics` - Analytics with charts
 - `/dashboard/media` - Media Library (upload/manage images & audio files)

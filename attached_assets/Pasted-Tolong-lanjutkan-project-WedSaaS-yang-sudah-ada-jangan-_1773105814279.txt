@@ -1,0 +1,455 @@
+Tolong lanjutkan project WedSaaS yang sudah ada, jangan buat ulang dari nol.
+
+Saya ingin kamu menambahkan dan mengaktifkan 15 fitur utama untuk SaaS undangan digital ini secara nyata, usable, dan terhubung ke flow aplikasi. Fokus pada implementasi yang benar-benar bisa dipakai, bukan sekadar UI dummy.
+
+Tujuan utama:
+- membuat WedSaaS lebih layak dijual sebagai platform undangan digital premium
+- menambah fitur yang paling dicari user undangan digital
+- memastikan semua fitur baru terhubung dengan invitation, dashboard user, halaman publik, dan admin jika relevan
+- tetap menjaga UI clean, elegan, simpel, dan responsif di mobile, tablet, laptop, dan desktop
+
+PENTING:
+- gunakan codebase yang sudah ada
+- refactor seperlunya
+- jika ada fitur yang belum bisa full production, buat MVP yang jujur dan stabil
+- jangan menampilkan data palsu seolah nyata
+- semua tombol utama harus benar-benar punya action
+- audit script dan perbaiki jika ada bagian yang bentrok
+
+==================================================
+FITUR 1 — AMPLOP DIGITAL / HADIAH ONLINE
+==================================================
+
+Aktifkan dan rapikan fitur amplop digital.
+
+User harus bisa:
+- menambahkan rekening bank
+- menambahkan e-wallet
+- menambahkan QRIS placeholder jika memungkinkan
+- menyimpan data hadiah per invitation
+- menampilkan hadiah di halaman public invitation
+- tamu bisa klik copy nomor rekening / e-wallet
+- tamu bisa submit konfirmasi hadiah
+
+Admin/user dashboard harus bisa melihat:
+- daftar gift confirmations
+- nama pengirim
+- nominal
+- metode hadiah
+- pesan
+- status jika diperlukan
+
+Field minimal:
+- bank_name
+- account_number
+- account_holder
+- wallet_name
+- wallet_number
+- qris_url optional
+- sender_name
+- amount
+- method
+- message
+
+==================================================
+FITUR 2 — FILTER UNDANGAN TAMU PER ACARA
+==================================================
+
+Tambahkan sistem event access per tamu.
+
+Kebutuhan:
+- satu invitation bisa punya beberapa acara:
+  - akad
+  - resepsi
+  - ngunduh mantu
+  - acara tambahan lainnya jika ada
+- setiap tamu bisa di-assign ke acara tertentu saja
+- halaman undangan publik hanya menampilkan acara yang relevan jika tamu dibuka lewat guest token/link unik
+- jika tamu umum tanpa token, gunakan fallback event default
+
+Dashboard user harus bisa:
+- mengatur tamu diundang ke acara mana saja
+- melihat assignment tamu ke acara
+- edit assignment dengan mudah
+
+==================================================
+FITUR 3 — COUNTDOWN WEDDING
+==================================================
+
+Tambahkan countdown wedding yang aktif di halaman undangan publik.
+
+Kebutuhan:
+- countdown mengambil tanggal acara utama dari invitation
+- tampilkan hari, jam, menit, detik
+- responsive
+- theme-aware
+- punya fallback jika tanggal belum diisi
+
+Tambahkan beberapa style variant jika arsitektur sudah mendukung:
+- minimal
+- romantic
+- luxury
+- modern
+
+==================================================
+FITUR 4 — LOVE STORY TIMELINE
+==================================================
+
+Tambahkan fitur love story timeline.
+
+User harus bisa:
+- menambah timeline item
+- edit timeline item
+- hapus timeline item
+- atur urutan timeline
+- mengisi tanggal/tahun
+- mengisi judul
+- mengisi deskripsi
+- upload foto optional
+
+Public invitation harus bisa menampilkan timeline ini secara elegan.
+
+Minimal field:
+- invitation_id
+- title
+- date_label
+- description
+- image_url optional
+- sort_order
+
+==================================================
+FITUR 5 — GOOGLE MAPS + WAZE + APPLE MAPS
+==================================================
+
+Tambahkan dukungan lokasi yang lebih lengkap.
+
+Kebutuhan:
+- user bisa mengisi lokasi dan link maps untuk tiap acara
+- public invitation menampilkan tombol:
+  - Google Maps
+  - Waze
+  - Apple Maps placeholder/fallback jika relevan
+- tombol membuka link tujuan dengan benar
+- tampilkan alamat acara yang rapi
+- jika link maps tidak ada, sembunyikan tombol yang tidak relevan
+
+Tambahkan juga tombol:
+- Tambahkan ke Kalender
+
+Minimal untuk:
+- Google Calendar
+- ICS export placeholder/basic jika memungkinkan
+
+==================================================
+FITUR 6 — SHARE KE WHATSAPP OTOMATIS
+==================================================
+
+Tambahkan fitur share invitation.
+
+User harus bisa:
+- copy invitation link
+- share ke WhatsApp
+- share ke Telegram
+- share ke Facebook
+- share ke email placeholder/basic jika memungkinkan
+
+Tambahkan template pesan default seperti:
+- nama pasangan
+- tanggal acara
+- link invitation
+
+Jika personalized guest link aktif, gunakan link tamu unik saat user share ke tamu tertentu.
+
+==================================================
+FITUR 7 — GALERI FOTO PREWEDDING
+==================================================
+
+Rapikan dan aktifkan galeri foto.
+
+User harus bisa:
+- upload foto galeri
+- hapus foto
+- atur urutan foto
+- pilih cover image jika perlu
+- gunakan gambar dari media library jika fitur itu sudah ada
+
+Public invitation:
+- tampilkan galeri dalam grid/slider yang clean
+- klik gambar membuka preview/lightbox sederhana
+- responsive di semua device
+
+Tambahkan video prewedding URL jika arsitektur mendukung:
+- YouTube/Vimeo embed basic
+
+==================================================
+FITUR 8 — BUKU TAMU / UCAPAN
+==================================================
+
+Aktifkan fitur ucapan tamu secara nyata.
+
+Public:
+- form ucapan tamu
+- field nama dan pesan
+- submit ke database
+- tampilkan daftar ucapan
+
+Dashboard user:
+- lihat semua ucapan
+- hide/show ucapan
+- filter terbaru/terlama
+- moderation basic
+
+Tambahkan dukungan:
+- emoji sederhana jika aman
+- jangan berlebihan
+- tetap clean
+
+==================================================
+FITUR 9 — TEMA WARNA OTOMATIS
+==================================================
+
+Tambahkan fitur theme color presets untuk invitation.
+
+Preset minimal:
+- Gold
+- Rose Gold
+- Sage Green
+- Luxury Black
+- Classic White
+
+Kebutuhan:
+- user bisa memilih preset warna dari dashboard/builder
+- pilihan tersimpan ke invitation/template
+- public invitation membaca preset ini
+- warna memengaruhi button, accent, heading accents, badge, dan elemen visual penting
+
+Jangan hanya ubah background.
+Gunakan color token/theme token yang rapi.
+
+==================================================
+FITUR 10 — MUSIK UNDANGAN
+==================================================
+
+Aktifkan fitur musik undangan dengan lebih baik.
+
+User harus bisa:
+- upload musik sendiri atau isi URL musik
+- memberi label lagu
+- aktif/nonaktifkan musik
+- preview musik
+- ganti atau hapus musik
+- memilih apakah music control tampil
+
+Public invitation:
+- tampilkan tombol play/pause
+- handle browser autoplay policy dengan aman
+- jangan memaksa autoplay yang membuat error
+- UI music control harus elegan dan tidak mengganggu
+
+==================================================
+FITUR 11 — MODE GELAP / DARK MODE
+==================================================
+
+Tambahkan dark mode yang rapi.
+
+Kebutuhan:
+- tersedia toggle dark/light mode jika cocok
+- theme-aware
+- dashboard dan landing page mendukung dark mode jika stabil
+- public invitation minimal tidak rusak jika dark mode aktif
+- simpan preferensi user di local storage atau setting user jika relevan
+
+Jika dark mode terlalu berat untuk semua area, prioritaskan:
+- dashboard
+- marketing pages
+
+==================================================
+FITUR 12 — WATERMARK FREE / PREMIUM
+==================================================
+
+Tambahkan logika watermark berdasarkan plan.
+
+Aturan:
+- Free plan: tampilkan watermark WedSaaS di invitation publik
+- Premium/Business: watermark hilang
+
+Kebutuhan:
+- status plan user dibaca dari database/subscription
+- public invitation tahu apakah harus menampilkan watermark
+- watermark tampil elegan dan tidak merusak tampilan
+- jangan hardcode berdasarkan mode demo saja
+
+==================================================
+FITUR 13 — STATISTIK UNDANGAN
+==================================================
+
+Tambahkan statistik undangan yang nyata sejauh memungkinkan.
+
+Minimal statistik:
+- total views
+- total RSVP
+- total hadir
+- total tidak hadir
+- total share jika tersedia
+- total gift confirmations
+
+Jika event tracking view belum ada, buat struktur tracking ringan yang aman:
+- simpan page views invitation
+- tampilkan summary di dashboard
+
+Jangan tampilkan angka palsu.
+Lebih baik sederhana tapi nyata.
+
+==================================================
+FITUR 14 — SAVE THE DATE
+==================================================
+
+Tambahkan fitur Save The Date.
+
+User harus bisa:
+- mengaktifkan mode save-the-date untuk invitation
+- membuat versi singkat halaman sebelum invitation full
+- share link save-the-date
+- menampilkan:
+  - nama pasangan
+  - tanggal
+  - lokasi ringkas optional
+  - CTA ke invitation penuh jika sudah publish
+
+Kebutuhan:
+- save-the-date bisa jadi page mode/variant dari invitation
+- user bisa memilih apakah mau menampilkannya
+- UI clean dan ringkas
+
+==================================================
+FITUR 15 — CUSTOM URL UNDANGAN
+==================================================
+
+Aktifkan dan rapikan custom URL invitation.
+
+Kebutuhan:
+- user bisa mengatur slug invitation
+- slug harus unik
+- preview URL tampil di dashboard
+- public route membaca slug dengan benar
+- validasi slug saat create/edit invitation
+- jika user plan premium/business, siapkan juga struktur custom domain placeholder/basic jika sudah ada
+
+Contoh:
+- /invite/ahmad-sari
+- /invite/rina-fajar
+
+Jangan biarkan slug bentrok.
+
+==================================================
+INTEGRASI FITUR DENGAN DASHBOARD
+==================================================
+
+Setelah semua fitur di atas ditambahkan, rapikan dashboard user agar menu dan flow tetap fokus.
+
+Menu user yang ideal:
+- Dashboard
+- Invitations
+- Guests
+- Themes / Templates
+- Media
+- Music
+- Subscription
+- Account
+
+Jika beberapa fitur masuk ke halaman invitation builder/detail invitation, rapikan navigasinya agar tidak membingungkan.
+
+==================================================
+INTEGRASI ADMIN
+==================================================
+
+Jika relevan, admin harus bisa melihat:
+- invitation stats global
+- payment/plan status untuk watermark logic
+- gift confirmations jika perlu
+- theme usage summary jika ada
+- user invitation summary
+
+Jangan tambah admin page kosong.
+Hanya tambah jika benar-benar ada flow.
+
+==================================================
+DATABASE / DATA MODEL
+==================================================
+
+Tambahkan atau rapikan tabel/struktur yang dibutuhkan untuk mendukung fitur di atas, seperti:
+- invitation_events
+- guest_event_assignments
+- love_story_items
+- invitation_gallery
+- guest_messages
+- gift_accounts
+- gift_confirmations
+- invitation_music
+- invitation_views
+- save_the_date_settings
+- subscription / plan data
+- theme color preset data jika perlu
+
+Pastikan relasi jelas, aman, dan scoped ke invitation/user yang benar.
+
+==================================================
+RESPONSIVE & UI/UX
+==================================================
+
+Pastikan semua fitur baru:
+- clean
+- elegan
+- simpel
+- premium
+- mobile friendly
+- tablet friendly
+- desktop friendly
+
+Perhatikan:
+- form input
+- cards
+- gallery
+- countdown
+- gift cards
+- timeline
+- share buttons
+- music control
+- save the date page
+
+Jangan sampai fitur banyak tapi UI berantakan.
+
+==================================================
+AUDIT SCRIPT DAN FLOW
+==================================================
+
+Setelah implementasi, audit ulang seluruh script dan perbaiki:
+- broken imports
+- broken routes
+- dead components
+- buttons tanpa action
+- forms yang tidak submit
+- state yang bentrok
+- mock data yang menyesatkan
+- undefined/null crash
+- responsive issues
+- duplicate services / logic
+
+Saya ingin hasilnya benar-benar usable.
+
+==================================================
+OUTPUT YANG SAYA MAU
+==================================================
+
+Setelah selesai, tampilkan:
+1. daftar file yang diubah
+2. fitur 1-15 mana saja yang sudah aktif
+3. flow setiap fitur secara singkat
+4. tabel/struktur data baru yang ditambahkan
+5. bagian yang masih MVP jika ada
+6. hasil audit script
+7. kode final
+
+PENTING:
+Jangan hanya menambahkan tampilan.
+Saya ingin fitur 1-15 benar-benar usable dan memperkuat WedSaaS sebagai platform jual undangan digital premium.

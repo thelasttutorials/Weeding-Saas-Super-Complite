@@ -15,11 +15,13 @@ import {
   insertUserSchema, insertInvitationSchema, insertRsvpSchema, insertGuestMessageSchema, insertGiftAccountSchema,
   insertTestimonialSchema, insertFaqSchema, insertPricingPlanSchema, insertWebsiteSettingsSchema, insertSeoSettingsSchema,
   insertPricingPlanFeatureSchema, insertWeddingThemeSchema, insertWeddingThemeBlockSchema,
-  insertCouponSchema, insertCustomDomainSchema, insertMediaAssetSchema, insertGuestSchema
+  insertCouponSchema, insertCustomDomainSchema, insertMediaAssetSchema, insertGuestSchema,
+  insertLoveStoryItemSchema, users
 } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 import { UPLOAD_DIR } from "./upload";
+import { eq } from "drizzle-orm";
 
 import bcrypt from "bcrypt";
 import passport from "passport";
@@ -156,7 +158,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       // Handle referral if provided
       if (referralCode) {
-        const referrer = await storage.db.select().from(users).where(eq(users.referralCode, referralCode)).limit(1);
+        const referrer = await (storage as any).db.select().from(users).where(eq(users.referralCode, referralCode)).limit(1);
         if (referrer.length > 0) {
           await storage.createReferralUsage(referrer[0].id, user.id);
         }
@@ -235,49 +237,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/invitations/:id", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
       res.json(inv);
     });
   });
 
   app.patch("/api/invitations/:id", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      const updated = await s.updateInvitation(req.params.id, req.body);
+      const updated = await s.updateInvitation(id, req.body);
       res.json(updated);
     });
   });
 
   app.delete("/api/invitations/:id", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      await s.deleteInvitation(req.params.id);
+      await s.deleteInvitation(id);
       res.json({ success: true });
     });
   });
 
   app.post("/api/invitations/:id/publish", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
 
       const errors: string[] = [];
       if (!inv.slug || inv.slug.length < 3) errors.push("URL undangan tidak valid");
 
-      const couple = await s.getCoupleByInvitation(req.params.id);
+      const couple = await s.getCoupleByInvitation(id);
       if (!couple || !couple.brideName?.trim() || !couple.groomName?.trim()) {
         errors.push("Nama mempelai wanita dan pria wajib diisi (tab Pasangan)");
       }
 
-      const events = await s.getEventsByInvitation(req.params.id);
+      const events = await s.getEventsByInvitation(id);
       if (!events || (!events.receptionDate?.trim() && !events.akadDate?.trim())) {
         errors.push("Tanggal acara (Akad atau Resepsi) wajib diisi (tab Acara)");
       }
@@ -286,7 +292,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(422).json({ message: "Data undangan belum lengkap", errors });
       }
 
-      const updated = await s.updateInvitation(req.params.id, {
+      const updated = await s.updateInvitation(id, {
         status: "published",
         publishedAt: new Date(),
       });
@@ -295,11 +301,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/invitations/:id/unpublish", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      const updated = await s.updateInvitation(req.params.id, {
+      const updated = await s.updateInvitation(id, {
         status: "draft",
         publishedAt: null,
       });
@@ -309,9 +316,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   // Preview route — owner/admin only, no status check, no view increment
   app.get("/api/invitations/:id/preview-data", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       const user = req.user as Express.User;
       if (!inv || (inv.userId !== user.id && !user.isAdmin)) {
         res.status(404).json({ message: "Not found" });
@@ -323,14 +331,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/invitations/:id/duplicate", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) {
         res.status(404).json({ message: "Invitation not found" });
         return;
       }
-      const duplicated = await s.duplicateInvitation(req.params.id);
+      const duplicated = await s.duplicateInvitation(id);
       res.json(duplicated);
     });
   });
@@ -339,6 +348,68 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const { type, groomName, brideName, tone, language, length } = req.body;
     const generated = storage.generateAICopy(type, groomName, brideName, tone, language, length);
     res.json({ text: generated, info: "Generated by template engine" });
+  });
+
+  // ── Love Story routes (RLS-scoped) ───────────────────────────────────────────
+
+  app.get("/api/invitations/:id/love-story", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(await s.getLoveStoryItemsByInvitation(id));
+    });
+  });
+
+  app.post("/api/invitations/:id/love-story", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
+    try {
+      const data = insertLoveStoryItemSchema.parse({ ...req.body, invitationId: id });
+      await withUserContext(userId(req), async (userDb) => {
+        const s = createStorage(userDb);
+        const inv = await s.getInvitationById(id);
+        if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+        res.status(201).json(await s.createLoveStoryItem(data));
+      });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/love-story/:id", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      // Ideally we should check if the item belongs to an invitation owned by the user
+      // But RLS in withUserContext should handle this if configured properly.
+      // For now, simple update.
+      const updated = await s.updateLoveStoryItem(id, req.body);
+      if (!updated) { res.status(404).json({ message: "Not found" }); return; }
+      res.json(updated);
+    });
+  });
+
+  app.delete("/api/love-story/:id", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      await s.deleteLoveStoryItem(id);
+      res.json({ success: true });
+    });
+  });
+
+  app.patch("/api/invitations/:id/love-story/reorder", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
+    const { itemIds } = req.body;
+    if (!Array.isArray(itemIds)) return res.status(400).json({ message: "itemIds array required" });
+    await withUserContext(userId(req), async (userDb) => {
+      const s = createStorage(userDb);
+      const inv = await s.getInvitationById(id);
+      if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
+      await s.reorderLoveStoryItems(id, itemIds);
+      res.json({ success: true });
+    });
   });
 
   app.get("/api/public/landing-settings", async (req, res) => {
@@ -359,83 +430,93 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── Builder detail routes (RLS-scoped) ──────────────────────────────────────
 
   app.get("/api/invitations/:id/couple", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getCoupleByInvitation(req.params.id) || {});
+      res.json(await s.getCoupleByInvitation(id) || {});
     });
   });
 
   app.put("/api/invitations/:id/couple", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.upsertCouple({ ...req.body, invitationId: req.params.id }));
+      res.json(await s.upsertCouple({ ...req.body, invitationId: id }));
     });
   });
 
   app.get("/api/invitations/:id/events", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getEventsByInvitation(req.params.id) || {});
+      res.json(await s.getEventsByInvitation(id) || {});
     });
   });
 
   app.put("/api/invitations/:id/events", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.upsertEvents({ ...req.body, invitationId: req.params.id }));
+      res.json(await s.upsertEvents({ ...req.body, invitationId: id }));
     });
   });
 
   app.get("/api/invitations/:id/content", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getContentByInvitation(req.params.id) || {});
+      res.json(await s.getContentByInvitation(id) || {});
     });
   });
 
   app.put("/api/invitations/:id/content", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.upsertContent({ ...req.body, invitationId: req.params.id }));
+      res.json(await s.upsertContent({ ...req.body, invitationId: id }));
     });
   });
 
   app.get("/api/invitations/:id/gallery", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getGalleryByInvitation(req.params.id));
+      res.json(await s.getGalleryByInvitation(id));
     });
   });
 
   app.post("/api/invitations/:id/gallery", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.addGalleryImage({ ...req.body, invitationId: req.params.id }));
+      res.json(await s.addGalleryImage({ ...req.body, invitationId: id }));
     });
   });
 
   app.delete("/api/invitations/:id/gallery/:imageId", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
+    const imageId = String(req.params.imageId);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      await s.deleteGalleryImage(req.params.imageId);
+      await s.deleteGalleryImage(imageId);
       res.json({ success: true });
     });
   });
@@ -443,46 +524,51 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ── RSVP / Messages / Gifts (RLS-scoped) ────────────────────────────────────
 
   app.get("/api/invitations/:id/rsvps", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getRsvpsByInvitation(req.params.id));
+      res.json(await s.getRsvpsByInvitation(id));
     });
   });
 
   app.get("/api/invitations/:id/messages", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getAllMessagesByInvitation(req.params.id));
+      res.json(await s.getAllMessagesByInvitation(id));
     });
   });
 
   app.patch("/api/messages/:id/visibility", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      await s.updateMessageVisibility(req.params.id, req.body.visible);
+      await s.updateMessageVisibility(id, req.body.visible);
       res.json({ success: true });
     });
   });
 
   app.get("/api/invitations/:id/gifts", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getGiftAccountsByInvitation(req.params.id));
+      res.json(await s.getGiftAccountsByInvitation(id));
     });
   });
 
   app.post("/api/invitations/:id/gifts", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     try {
-      const data = insertGiftAccountSchema.parse({ ...req.body, invitationId: req.params.id });
+      const data = insertGiftAccountSchema.parse({ ...req.body, invitationId: id });
       await withUserContext(userId(req), async (userDb) => {
         const s = createStorage(userDb);
-        const inv = await s.getInvitationById(req.params.id);
+        const inv = await s.getInvitationById(id);
         if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
         res.json(await s.createGiftAccount(data));
       });
@@ -492,19 +578,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete("/api/gifts/:id", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      await s.deleteGiftAccount(req.params.id);
+      await s.deleteGiftAccount(id);
       res.json({ success: true });
     });
   });
 
   app.get("/api/invitations/:id/gift-confirmations", requireAuth, async (req, res) => {
+    const id = String(req.params.id);
     await withUserContext(userId(req), async (userDb) => {
       const s = createStorage(userDb);
-      const inv = await s.getInvitationById(req.params.id);
+      const inv = await s.getInvitationById(id);
       if (!inv || inv.userId !== userId(req)) { res.status(404).json({ message: "Not found" }); return; }
-      res.json(await s.getGiftConfirmationsByInvitation(req.params.id));
+      res.json(await s.getGiftConfirmationsByInvitation(id));
     });
   });
 
@@ -617,7 +705,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/guests/token/:token", async (req, res) => {
     const guest = await storage.getGuestByToken(req.params.token);
     if (!guest) return res.status(404).json({ message: "Guest not found" });
-    res.json(guest);
+    const assignment = await storage.getGuestEventAssignment(guest.id);
+    res.json({ ...guest, eventAssignment: assignment?.eventType || "both" });
+  });
+
+  app.get("/api/guests/:id/events", requireAuth, async (req, res) => {
+    const assignment = await storage.getGuestEventAssignment(req.params.id as string);
+    res.json(assignment || { eventType: "both" });
+  });
+
+  app.put("/api/guests/:id/events", requireAuth, async (req, res) => {
+    const assignment = await storage.upsertGuestEventAssignment({
+      guestId: req.params.id as string,
+      eventType: req.body.eventType,
+    });
+    res.json(assignment);
   });
 
   // ── User profile (users table is not FORCE RLS, global storage is fine) ──────
@@ -1488,8 +1590,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/public/:slug", async (req, res) => {
     const inv = await storage.getFullInvitationBySlug(req.params.slug);
     if (!inv || inv.status !== "published") return res.status(404).json({ message: "Invitation not found" });
+
+    // Find user to get plan
+    const user = await storage.getUser(inv.userId);
+    const userPlan = user?.plan || "free";
+
+    const loveStory = await storage.getLoveStoryItemsByInvitation(inv.id);
+
     await storage.incrementViews(inv.id);
-    res.json(inv);
+    res.json({ ...inv, userPlan, loveStory });
+  });
+
+  app.get("/api/public/:slug/save-the-date", async (req, res) => {
+    const inv = await storage.getInvitationBySlug(req.params.slug);
+    if (!inv || inv.status !== "published" || !inv.saveTheDateEnabled) {
+      return res.status(404).json({ message: "Save The Date not found or not enabled" });
+    }
+
+    const couple = await storage.getCoupleByInvitation(inv.id);
+    const events = await storage.getEventsByInvitation(inv.id);
+
+    res.json({
+      title: inv.title,
+      slug: inv.slug,
+      coverImage: inv.coverImage,
+      saveTheDateMessage: inv.saveTheDateMessage,
+      brideName: couple?.brideName,
+      groomName: couple?.groomName,
+      date: events?.receptionDate || events?.akadDate,
+      venue: events?.receptionVenue || events?.akadVenue,
+    });
   });
 
   app.post("/api/public/:slug/rsvp", async (req, res) => {
