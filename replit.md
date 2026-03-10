@@ -59,7 +59,7 @@ WedSaaS is a production-ready SaaS platform for digital wedding invitations. Use
 - Admin testimonials/FAQ/pricing CRUD
 - Admin website settings & SEO settings stored in DB
 - Audit logging for all admin actions
-- **Manual Bank Transfer Payment System**: Users select plan → checkout modal → invoice with unique 3-digit code (amount + code = finalAmount) → 24h countdown timer → upload proof URL → admin approve/reject → plan auto-activated on approval
+- **Manual Bank Transfer Payment System**: Users select plan → checkout modal → invoice with unique 3-digit code (amount + code = finalAmount) → 24h countdown timer → secure file upload (JPG/PNG/WebP/PDF, max 5MB, magic-bytes validated, UUID-renamed) → admin approve/reject → plan auto-activated on approval
 
 ## Database Tables (24 total)
 ### User/Invitation Tables (RLS enforced)

@@ -378,6 +378,22 @@ export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
+// ── File Uploads ──────────────────────────────────────────────────────────────
+export const fileUploads = pgTable("file_uploads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  originalName: text("original_name").notNull(),
+  storedName: text("stored_name").notNull().unique(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({ id: true, createdAt: true });
+export type FileUpload = typeof fileUploads.$inferSelect;
+export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
+
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;
   events: InvitationEvents | null;

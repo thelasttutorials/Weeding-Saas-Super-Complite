@@ -1,5 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
+import { uploadMiddleware, validateAndSaveFile } from "./upload";
 
 // Express v5 changed ParamsDictionary to string | string[] — override to string for convenience
 declare module "express-serve-static-core" {
@@ -947,6 +949,57 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
+  });
+
+  // ── File upload ────────────────────────────────────────────────────────────
+
+  app.post("/api/payments/:id/upload-proof", requireAuth, (req, res, next) => {
+    uploadMiddleware(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ message: "Ukuran file terlalu besar. Maksimal 5 MB." });
+        }
+        return res.status(400).json({ message: `Upload error: ${err.message}` });
+      }
+      if (err) {
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "Tidak ada file yang diupload." });
+    }
+    const payment = await storage.getPaymentById(req.params.id);
+    if (!payment) return res.status(404).json({ message: "Invoice tidak ditemukan." });
+    if (payment.userId !== userId(req)) return res.status(403).json({ message: "Forbidden." });
+    if (["paid", "expired", "canceled", "rejected"].includes(payment.status)) {
+      return res.status(400).json({ message: "Invoice ini tidak dapat diubah." });
+    }
+
+    let saved: import("./upload").SavedFile;
+    try {
+      saved = validateAndSaveFile(req.file);
+    } catch (e: any) {
+      return res.status(400).json({ message: e.message });
+    }
+
+    // Save file metadata
+    await storage.createFileUpload({
+      uploadedBy: userId(req),
+      originalName: saved.originalName,
+      storedName: saved.storedName,
+      mimeType: saved.mimeType,
+      size: saved.size,
+      url: saved.url,
+    });
+
+    // Update payment
+    const updated = await storage.updatePayment(payment.id, {
+      transferProofUrl: saved.url,
+      status: "waiting_confirmation",
+    });
+    res.json({ payment: updated, file: { url: saved.url, mimeType: saved.mimeType, size: saved.size, originalName: saved.originalName } });
   });
 
   // ── Bank accounts ──────────────────────────────────────────────────────────

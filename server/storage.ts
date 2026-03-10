@@ -6,7 +6,7 @@ import {
   giftAccounts, giftConfirmations, subscriptions, whiteLabelSettings,
   testimonials, faqs, pricingPlans, pricingPlanFeatures, auditLogs,
   websiteSettings, seoSettings, weddingThemes, weddingThemeBlocks,
-  bankAccounts, payments,
+  bankAccounts, payments, fileUploads,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
@@ -24,6 +24,7 @@ import {
   type WeddingThemeBlock, type InsertWeddingThemeBlock,
   type BankAccount, type InsertBankAccount,
   type Payment, type InsertPayment,
+  type FileUpload, type InsertFileUpload,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -143,6 +144,10 @@ export interface IStorage {
 
   getAllUsers(): Promise<Omit<User, "password">[]>;
   getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
+
+  // File Uploads
+  createFileUpload(data: InsertFileUpload): Promise<FileUpload>;
+  getFileUploadsByUser(userId: string): Promise<FileUpload[]>;
 
   // Bank Accounts
   getBankAccounts(activeOnly?: boolean): Promise<BankAccount[]>;
@@ -894,6 +899,18 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(1);
     return !!existing;
+  }
+
+  // ── File Uploads ────────────────────────────────────────────────────────────
+  async createFileUpload(data: InsertFileUpload): Promise<FileUpload> {
+    const [record] = await this.db.insert(fileUploads).values({ ...data, id: randomUUID() }).returning();
+    return record;
+  }
+
+  async getFileUploadsByUser(userId: string): Promise<FileUpload[]> {
+    return this.db.select().from(fileUploads)
+      .where(eq(fileUploads.uploadedBy, userId))
+      .orderBy(desc(fileUploads.createdAt));
   }
 }
 

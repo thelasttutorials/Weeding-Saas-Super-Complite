@@ -1,16 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   Copy, Clock, CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft,
-  ExternalLink, Upload, ImageIcon, Timer,
+  ExternalLink, Upload, ImageIcon, Timer, FileText, Paperclip, Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -18,6 +16,15 @@ import { Link } from "wouter";
 import { format } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import type { Payment, BankAccount } from "@shared/schema";
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
+const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Menunggu Pembayaran",
@@ -139,8 +146,10 @@ function PaymentTimeline({ status, createdAt, paidAt }: { status: string; create
 export default function PaymentInvoicePage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const [proofUrl, setProofUrl] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: payment, isLoading, error } = useQuery<Payment>({
     queryKey: ["/api/payments", id],
@@ -153,18 +162,51 @@ export default function PaymentInvoicePage() {
   });
 
   const proofMutation = useMutation({
-    mutationFn: () => apiRequest("PATCH", `/api/payments/${id}/proof`, { transferProofUrl: proofUrl }),
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/payments/${id}/upload-proof`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || "Gagal mengupload file.");
+      }
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payments", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      setProofFile(null);
+      setFileError(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast({ title: "Bukti transfer terkirim!", description: "Admin akan memverifikasi pembayaran dalam 1x24 jam." });
     },
-    onError: async (err: any) => {
-      let msg = "Gagal mengirim bukti.";
-      try { const d = await err.json(); msg = d.message || msg; } catch {}
-      toast({ title: "Error", description: msg, variant: "destructive" });
+    onError: (err: any) => {
+      toast({ title: "Upload Gagal", description: err.message, variant: "destructive" });
     },
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    const file = e.target.files?.[0];
+    if (!file) { setProofFile(null); return; }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setFileError("Tipe file tidak diizinkan. Hanya JPG, PNG, WebP, dan PDF.");
+      setProofFile(null);
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      setFileError(`Ukuran file terlalu besar. Maksimal 5 MB (file ini ${formatBytes(file.size)}).`);
+      setProofFile(null);
+      e.target.value = "";
+      return;
+    }
+    setProofFile(file);
+  };
 
   const cancelMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", `/api/payments/${id}/cancel`, {}),
@@ -359,29 +401,74 @@ export default function PaymentInvoicePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="proof-url">URL Bukti Transfer</Label>
-              <Input
-                id="proof-url"
-                placeholder="https://drive.google.com/... atau link gambar lainnya"
-                value={proofUrl}
-                onChange={e => setProofUrl(e.target.value)}
-                data-testid="input-proof-url"
-              />
-              <p className="text-xs text-muted-foreground">Upload screenshot/foto bukti transfer ke Google Drive, Imgur, atau layanan serupa, lalu paste link-nya di sini.</p>
-            </div>
-            {proofUrl && proofUrl.startsWith("http") && (
-              <div className="flex items-center gap-2 p-2 rounded-lg border bg-muted/30">
-                <ImageIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 truncate">
-                  Lihat bukti transfer <ExternalLink className="w-3 h-3 shrink-0" />
-                </a>
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp,.pdf"
+              className="hidden"
+              data-testid="input-proof-file"
+              onChange={handleFileChange}
+            />
+
+            {/* Drop zone / file selector */}
+            {!proofFile ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                data-testid="button-select-file"
+              >
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <Paperclip className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">Klik untuk pilih file</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WebP, atau PDF — maksimal 5 MB</p>
+                </div>
+              </button>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30" data-testid="file-preview">
+                <div className="w-9 h-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  {proofFile.type === "application/pdf"
+                    ? <FileText className="w-5 h-5 text-primary" />
+                    : <ImageIcon className="w-5 h-5 text-primary" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{proofFile.name}</p>
+                  <p className="text-xs text-muted-foreground">{formatBytes(proofFile.size)} · {proofFile.type.split("/")[1].toUpperCase()}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setProofFile(null);
+                    setFileError(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  data-testid="button-remove-file"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             )}
+
+            {/* Validation error */}
+            {fileError && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20" data-testid="file-error">
+                <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive">{fileError}</p>
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground space-y-0.5">
+              <p>Format yang diterima: JPG, JPEG, PNG, WebP, PDF</p>
+              <p>Ukuran maksimal: 5 MB</p>
+            </div>
+
             <Button
               className="w-full gap-2"
-              onClick={() => proofMutation.mutate()}
-              disabled={!proofUrl.trim() || proofMutation.isPending}
+              onClick={() => proofFile && proofMutation.mutate(proofFile)}
+              disabled={!proofFile || !!fileError || proofMutation.isPending}
               data-testid="button-submit-proof"
             >
               {proofMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
