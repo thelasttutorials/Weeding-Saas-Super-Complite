@@ -115,6 +115,62 @@ Sets `SET LOCAL app.current_user_id = '{userId}'` (transaction-scoped, safe with
 Set `is_admin = true` in the `users` table. Non-admin users attempting /admin are redirected to /dashboard.
 Use `PATCH /api/admin/users/:id/toggle-admin` to toggle via UI.
 
+## VPS / Self-Hosted Deployment
+
+### First-time setup (single command)
+```bash
+cp .env.example .env
+nano .env                  # Fill in DATABASE_URL, SESSION_SECRET, ADMIN_PASSWORD
+bash scripts/setup.sh      # Install → build → db push → seed
+npm start                  # or: pm2 start "npm start" --name wedsaas
+```
+
+### What setup.sh does (in order)
+1. Validates .env (fails if placeholders left unchanged)
+2. `npm ci` — clean install of production + dev deps
+3. `mkdir -p uploads dist` — ensures required directories exist
+4. `npm run build` — Vite client + esbuild server → `dist/`
+5. `echo "y" | npx drizzle-kit push` — non-interactive schema push
+6. `npx tsx scripts/seed.ts` — seeds admin, bank accounts, settings, pricing plans
+
+### Standalone scripts
+| Command | Purpose |
+|---|---|
+| `npm run build` | Build client (Vite) + server (esbuild) → `dist/` |
+| `npm start` | Run production build (Node.js) |
+| `npm run dev` | Development with hot-reload |
+| `npm run check` | TypeScript type-check |
+| `npm run db:push` | Push Drizzle schema to PostgreSQL (interactive) |
+| `npx tsx scripts/seed.ts` | Seed DB with admin, bank accounts, settings, pricing |
+| `bash scripts/setup.sh` | Full first-time VPS setup |
+
+### Required environment variables (see .env.example)
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (required) |
+| `SESSION_SECRET` | Long random string for session signing (required) |
+| `APP_URL` | Canonical URL e.g. https://yourdomain.com |
+| `PORT` | Port to listen on (default: 5000) |
+| `ADMIN_EMAIL` | Admin account email (seeded once) |
+| `ADMIN_USERNAME` | Admin username (seeded once, default: admin) |
+| `ADMIN_PASSWORD` | Admin password (seeded once, MUST change default) |
+| `SITE_NAME` | Site name used in settings (default: WedSaaS) |
+| `SKIP_DEMO_SEED` | Set "true" to skip demo user seeding |
+
+### Seed data (created on fresh install)
+- Admin user (credentials from ADMIN_* env vars, fallback: admin@wedsaas.app / Admin123!)
+- Demo user (demo / demo123) — skipped if SKIP_DEMO_SEED=true
+- Bank accounts: BCA, Mandiri, BNI
+- Website settings singleton (id=1)
+- SEO settings singleton (id=1)
+- Pricing plans: Free (Rp 0), Premium (Rp 99.000), Business (Rp 299.000) with features
+
+### Build script internals (script/build.ts)
+esbuild bundles pure-JS deps; these are intentionally kept external (not bundled):
+- `bcrypt` — native C++ bindings (.node file), must stay external
+- `bufferutil` — native C++ bindings (optional ws dep)
+- `pg` — has optional pg-native; kept external to avoid edge cases
+
 ## Express v5 Note
 This project uses Express v5 with `@types/express` v5. Route params are typed as `string | string[]` — routes.ts has a `declare module "express-serve-static-core"` override to treat them as `string`.
 

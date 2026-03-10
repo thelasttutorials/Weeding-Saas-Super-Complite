@@ -2,49 +2,43 @@ import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
 
-// server deps to bundle to reduce openat(2) syscalls
-// which helps cold start times
-const allowlist = [
-  "@google/generative-ai",
-  "axios",
+// Only packages that are actually installed AND are pure JS (no native .node bindings).
+// Packages intentionally left EXTERNAL (not bundled):
+//   bcrypt       — native C++ bindings, must stay external
+//   bufferutil   — native C++ bindings (optional ws dep)
+//   pg           — has optional pg-native; keeping external avoids edge cases
+//   drizzle-kit  — dev-only tooling, never imported at runtime
+const bundleList = new Set([
   "connect-pg-simple",
-  "cors",
   "date-fns",
   "drizzle-orm",
   "drizzle-zod",
   "express",
-  "express-rate-limit",
   "express-session",
-  "jsonwebtoken",
   "memorystore",
   "multer",
-  "nanoid",
-  "nodemailer",
-  "openai",
   "passport",
   "passport-local",
-  "pg",
-  "stripe",
-  "uuid",
   "ws",
-  "xlsx",
   "zod",
   "zod-validation-error",
-];
+]);
 
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
-  console.log("building client...");
+  console.log("▶  Building client (Vite)...");
   await viteBuild();
+  console.log("✔  Client built → dist/public\n");
 
-  console.log("building server...");
+  console.log("▶  Building server (esbuild)...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
   const allDeps = [
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
+    ...Object.keys(pkg.optionalDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  const externals = allDeps.filter((dep) => !bundleList.has(dep));
 
   await esbuild({
     entryPoints: ["server/index.ts"],
@@ -59,9 +53,13 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  console.log("✔  Server built → dist/index.cjs\n");
+  console.log("Build complete. Run with:");
+  console.log("  NODE_ENV=production node dist/index.cjs");
 }
 
 buildAll().catch((err) => {
-  console.error(err);
+  console.error("Build failed:", err);
   process.exit(1);
 });
