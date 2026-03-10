@@ -13,9 +13,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Globe, Loader2, ExternalLink, Image, Plus, Trash2, Copy, CheckCircle, XCircle, Eye, Share2 } from "lucide-react";
+import { 
+  ArrowLeft, Save, Globe, Loader2, ExternalLink, Image, Plus, Trash2, 
+  Copy, CheckCircle, XCircle, Eye, Share2, Wand2, Music, Upload, Search, FileAudio, Play, Pause, ChevronDown,
+  Database
+} from "lucide-react";
 import { Link } from "wouter";
-import type { Invitation, InvitationCouple, InvitationEvents, InvitationContent, GalleryImage } from "@shared/schema";
+import { AICopyAssistant } from "@/components/ai-copy-assistant";
+import type { Invitation, InvitationCouple, InvitationEvents, InvitationContent, GalleryImage, MediaAsset } from "@shared/schema";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ── Per-section save button with transient success state ─────────────────────
 function SaveButton({ isPending, savedKey, sectionKey, onClick, testId }: {
@@ -81,6 +93,10 @@ export default function Builder() {
     enabled: !!id,
   });
 
+  const { data: mediaAssets } = useQuery<MediaAsset[]>({
+    queryKey: ["/api/media"],
+  });
+
   // ── Local form states (synced from DB on first load) ─────────────────────────
   const [coupleData, setCoupleData] = useState({
     brideName: "", groomName: "", brideParents: "", groomParents: "",
@@ -92,11 +108,37 @@ export default function Builder() {
   });
   const [contentData, setContentData] = useState({
     openingQuote: "", closingMessage: "", hashtag: "", livestreamLink: "",
-    backgroundMusic: "", enableRsvp: true, rsvpDeadline: "", maxGuests: 2,
+    backgroundMusic: "", musicEnabled: false, musicLabel: "", showMusicControl: true,
+    enableRsvp: true, rsvpDeadline: "", maxGuests: 2,
   });
   const [settingsData, setSettingsData] = useState({
     title: "", slug: "", coverImage: "",
   });
+  const [playingMusic, setPlayingMusic] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePreviewMusic = (url: string) => {
+    if (playingMusic === url) {
+      audioRef.current?.pause();
+      setPlayingMusic(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.play();
+        setPlayingMusic(url);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const audio = new Audio();
+    audioRef.current = audio;
+    return () => {
+      audio.pause();
+      audioRef.current = null;
+    };
+  }, []);
+
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const slugCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [newImageUrl, setNewImageUrl] = useState("");
@@ -124,7 +166,11 @@ export default function Builder() {
     if (content) setContentData({
       openingQuote: content.openingQuote || "", closingMessage: content.closingMessage || "",
       hashtag: content.hashtag || "", livestreamLink: content.livestreamLink || "",
-      backgroundMusic: content.backgroundMusic || "", enableRsvp: content.enableRsvp ?? true,
+      backgroundMusic: content.backgroundMusic || "", 
+      musicEnabled: content.musicEnabled ?? false,
+      musicLabel: content.musicLabel || "",
+      showMusicControl: content.showMusicControl ?? true,
+      enableRsvp: content.enableRsvp ?? true,
       rsvpDeadline: content.rsvpDeadline || "", maxGuests: content.maxGuests ?? 2,
     });
   }, [content]);
@@ -401,7 +447,14 @@ export default function Builder() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Kisah Cinta</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Kisah Cinta</Label>
+                  <AICopyAssistant
+                    groomName={coupleData.groomName}
+                    brideName={coupleData.brideName}
+                    onSelect={(text) => setCoupleData(p => ({ ...p, loveStory: text }))}
+                  />
+                </div>
                 <Textarea
                   value={coupleData.loveStory}
                   onChange={e => setCoupleData(p => ({ ...p, loveStory: e.target.value }))}
@@ -518,7 +571,14 @@ export default function Builder() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Kutipan Pembuka</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Kutipan Pembuka</Label>
+                  <AICopyAssistant
+                    groomName={coupleData.groomName}
+                    brideName={coupleData.brideName}
+                    onSelect={(text) => setContentData(p => ({ ...p, openingQuote: text }))}
+                  />
+                </div>
                 <Textarea
                   value={contentData.openingQuote}
                   onChange={e => setContentData(p => ({ ...p, openingQuote: e.target.value }))}
@@ -528,7 +588,14 @@ export default function Builder() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Pesan Penutup</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Pesan Penutup</Label>
+                  <AICopyAssistant
+                    groomName={coupleData.groomName}
+                    brideName={coupleData.brideName}
+                    onSelect={(text) => setContentData(p => ({ ...p, closingMessage: text }))}
+                  />
+                </div>
                 <Textarea
                   value={contentData.closingMessage}
                   onChange={e => setContentData(p => ({ ...p, closingMessage: e.target.value }))}
@@ -539,7 +606,14 @@ export default function Builder() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Wedding Hashtag</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Wedding Hashtag</Label>
+                    <AICopyAssistant
+                      groomName={coupleData.groomName}
+                      brideName={coupleData.brideName}
+                      onSelect={(text) => setContentData(p => ({ ...p, hashtag: text }))}
+                    />
+                  </div>
                   <Input
                     value={contentData.hashtag}
                     onChange={e => setContentData(p => ({ ...p, hashtag: e.target.value }))}
@@ -557,14 +631,112 @@ export default function Builder() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Musik Latar (URL MP3/SoundCloud)</Label>
-                <Input
-                  value={contentData.backgroundMusic}
-                  onChange={e => setContentData(p => ({ ...p, backgroundMusic: e.target.value }))}
-                  placeholder="https://..."
-                  data-testid="input-background-music"
-                />
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Musik Latar</Label>
+                    <p className="text-xs text-muted-foreground">Mainkan musik otomatis saat undangan dibuka</p>
+                  </div>
+                  <Switch
+                    checked={contentData.musicEnabled}
+                    onCheckedChange={v => setContentData(p => ({ ...p, musicEnabled: v }))}
+                    data-testid="switch-music-enabled"
+                  />
+                </div>
+
+                {contentData.musicEnabled && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Label Musik</Label>
+                        <Input
+                          value={contentData.musicLabel}
+                          onChange={e => setContentData(p => ({ ...p, musicLabel: e.target.value }))}
+                          placeholder="Judul lagu - Artis"
+                          data-testid="input-music-label"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2 pt-8">
+                        <Switch
+                          id="show-music-control"
+                          checked={contentData.showMusicControl}
+                          onCheckedChange={v => setContentData(p => ({ ...p, showMusicControl: v }))}
+                          data-testid="switch-show-music-control"
+                        />
+                        <Label htmlFor="show-music-control" className="text-xs">Tampilkan tombol kontrol musik</Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Pilih Musik</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Music className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            value={contentData.backgroundMusic}
+                            onChange={e => setContentData(p => ({ ...p, backgroundMusic: e.target.value }))}
+                            placeholder="URL Musik (MP3)"
+                            className="pl-9"
+                            data-testid="input-background-music"
+                          />
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                              <Database className="w-4 h-4" />
+                              Media Library
+                              <ChevronDown className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-80">
+                            <div className="p-2 border-b">
+                              <p className="text-xs font-semibold">Pilih dari Media Library</p>
+                            </div>
+                            <ScrollArea className="h-64">
+                              <div className="p-1">
+                                {mediaAssets?.filter(a => a.mediaType === "audio").length === 0 ? (
+                                  <div className="p-4 text-center">
+                                    <p className="text-xs text-muted-foreground">Belum ada file musik di Media Library</p>
+                                    <Link href="/dashboard/media">
+                                      <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-primary underline">Upload sekarang</Button>
+                                    </Link>
+                                  </div>
+                                ) : (
+                                  mediaAssets?.filter(a => a.mediaType === "audio").map((asset) => (
+                                    <DropdownMenuItem
+                                      key={asset.id}
+                                      className="flex items-center justify-between gap-2 cursor-pointer"
+                                      onSelect={() => setContentData(p => ({ ...p, backgroundMusic: asset.url, musicLabel: asset.originalName.replace(/\.[^/.]+$/, "") }))}
+                                    >
+                                      <div className="flex items-center gap-2 overflow-hidden">
+                                        <FileAudio className="w-4 h-4 shrink-0 text-primary" />
+                                        <span className="text-xs truncate">{asset.originalName}</span>
+                                      </div>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6 shrink-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          togglePreviewMusic(asset.url);
+                                        }}
+                                      >
+                                        {playingMusic === asset.url ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                                      </Button>
+                                    </DropdownMenuItem>
+                                  ))
+                                )}
+                              </div>
+                            </ScrollArea>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground italic">
+                        * Gunakan file MP3 berkualitas baik untuk pengalaman terbaik.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* RSVP Settings */}

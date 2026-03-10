@@ -13,6 +13,11 @@ const ALLOWED_MIMETYPES = new Set([
   "image/png",
   "image/webp",
   "application/pdf",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/x-wav",
 ]);
 
 const ALLOWED_EXTENSIONS: Record<string, string> = {
@@ -21,6 +26,11 @@ const ALLOWED_EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
   "application/pdf": "pdf",
+  "audio/mpeg": "mp3",
+  "audio/mp4": "m4a",
+  "audio/ogg": "ogg",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
 };
 
 // ── Magic-bytes signatures ─────────────────────────────────────────────────────
@@ -46,6 +56,28 @@ const MAGIC_SIGNATURES: Array<{ mime: string; sig: Signature[] }> = [
     mime: "application/pdf",
     sig: [{ offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }], // %PDF
   },
+  {
+    mime: "audio/mpeg",
+    sig: [
+      { offset: 0, bytes: [0x49, 0x44, 0x33] }, // ID3
+      { offset: 0, bytes: [0xff, 0xfb] },       // MP3 Frame
+    ],
+  },
+  {
+    mime: "audio/mp4",
+    sig: [{ offset: 4, bytes: [0x66, 0x74, 0x79, 0x70, 0x4d, 0x34, 0x41] }], // ftypM4A
+  },
+  {
+    mime: "audio/ogg",
+    sig: [{ offset: 0, bytes: [0x4f, 0x67, 0x67, 0x53] }], // OggS
+  },
+  {
+    mime: "audio/wav",
+    sig: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF
+      { offset: 8, bytes: [0x57, 0x41, 0x56, 0x45] }, // WAVE
+    ],
+  },
 ];
 
 function detectMimeFromBuffer(buf: Buffer): string | null {
@@ -64,7 +96,7 @@ export const uploadMiddleware = multer({
   limits: { fileSize: MAX_FILE_SIZE, files: 1 },
   fileFilter(_req, file, cb) {
     if (!ALLOWED_MIMETYPES.has(file.mimetype)) {
-      return cb(new Error(`Tipe file tidak diizinkan. Hanya JPG, PNG, WebP, dan PDF.`));
+      return cb(new Error(`Tipe file tidak diizinkan. Hanya JPG, PNG, WebP, PDF, dan Audio (MP3, M4A, OGG, WAV).`));
     }
     cb(null, true);
   },
@@ -92,7 +124,7 @@ export function validateAndSaveFile(file: Express.Multer.File): SavedFile {
 
   // Ensure detected MIME matches declared MIME (or at least is in allowed list)
   if (!ALLOWED_MIMETYPES.has(detectedMime)) {
-    throw new Error("Tipe file tidak diizinkan. Hanya JPG, PNG, WebP, dan PDF.");
+    throw new Error("Tipe file tidak diizinkan. Hanya JPG, PNG, WebP, PDF, dan Audio (MP3, M4A, OGG, WAV).");
   }
 
   // JPEG variants: both image/jpeg and image/jpg map to same magic bytes

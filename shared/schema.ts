@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   plan: planEnum("plan").notNull().default("free"),
   isAdmin: boolean("is_admin").notNull().default(false),
   isSuspended: boolean("is_suspended").notNull().default(false),
+  referralCode: varchar("referral_code").unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -75,6 +76,9 @@ export const invitationContent = pgTable("invitation_content", {
   hashtag: text("hashtag").notNull().default(""),
   livestreamLink: text("livestream_link").notNull().default(""),
   backgroundMusic: text("background_music").notNull().default(""),
+  musicEnabled: boolean("music_enabled").notNull().default(false),
+  musicLabel: text("music_label").notNull().default(""),
+  showMusicControl: boolean("show_music_control").notNull().default(true),
   enableRsvp: boolean("enable_rsvp").notNull().default(true),
   rsvpDeadline: text("rsvp_deadline").notNull().default(""),
   maxGuests: integer("max_guests").notNull().default(2),
@@ -89,9 +93,30 @@ export const invitationGallery = pgTable("invitation_gallery", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── Guest Management (defined before rsvps to avoid forward ref) ──────────────
+
+export const guests = pgTable("guests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invitationId: varchar("invitation_id").notNull().references(() => invitations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  category: text("category").notNull().default("lainnya"), // keluarga | teman | kantor | vip | lainnya
+  guestCount: integer("guest_count").notNull().default(1),
+  notes: text("notes"),
+  customLinkToken: varchar("custom_link_token").unique(),
+  invitedStatus: boolean("invited_status").notNull().default(false),
+  rsvpStatus: text("rsvp_status").notNull().default("pending"), // pending | attending | not_attending
+  checkedIn: boolean("checked_in").notNull().default(false),
+  checkedInAt: timestamp("checked_in_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const rsvps = pgTable("rsvps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   invitationId: varchar("invitation_id").notNull().references(() => invitations.id, { onDelete: "cascade" }),
+  guestId: varchar("guest_id").references(() => guests.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   whatsapp: text("whatsapp").notNull().default(""),
   guestCount: integer("guest_count").notNull().default(1),
@@ -152,6 +177,95 @@ export const whiteLabelSettings = pgTable("white_label_settings", {
   customDomain: text("custom_domain"),
   hideWatermark: boolean("hide_watermark").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ── Media Library ─────────────────────────────────────────────────────────────
+
+export const mediaAssets = pgTable("media_assets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  url: text("url").notNull(),
+  mediaType: text("media_type").notNull().default("image"), // image | audio
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Custom Domains ────────────────────────────────────────────────────────────
+
+export const customDomains = pgTable("custom_domains", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  domain: text("domain").notNull().unique(),
+  status: text("status").notNull().default("pending"), // not_configured | pending | active | failed
+  verifiedAt: timestamp("verified_at"),
+  adminNotes: text("admin_notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ── Coupons ───────────────────────────────────────────────────────────────────
+
+export const coupons = pgTable("coupons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  discountType: text("discount_type").notNull().default("percentage"), // percentage | fixed
+  discountValue: integer("discount_value").notNull(),
+  minAmount: integer("min_amount").notNull().default(0),
+  maxUses: integer("max_uses"), // null = unlimited
+  usedCount: integer("used_count").notNull().default(0),
+  validFrom: timestamp("valid_from").notNull().defaultNow(),
+  validUntil: timestamp("valid_until"),
+  isActive: boolean("is_active").notNull().default(true),
+  applicablePlans: text("applicable_plans").array(),
+  description: text("description").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const couponUsages = pgTable("coupon_usages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  couponId: varchar("coupon_id").notNull().references(() => coupons.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentId: varchar("payment_id"),
+  discountApplied: integer("discount_applied").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Referrals ─────────────────────────────────────────────────────────────────
+
+export const referralUsages = pgTable("referral_usages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referrerId: varchar("referrer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  refereeId: varchar("referee_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── CMS Landing Page ──────────────────────────────────────────────────────────
+
+export const landingPageSettings = pgTable("landing_page_settings", {
+  id: serial("id").primaryKey(),
+  heroTitle: text("hero_title").notNull().default("Undangan Pernikahan Digital yang Indah & Berkesan"),
+  heroSubtitle: text("hero_subtitle").notNull().default("Buat undangan pernikahan digital impian Anda dalam hitungan menit. RSVP online, ucapan tamu, galeri foto, dan masih banyak lagi."),
+  heroCtaText: text("hero_cta_text").notNull().default("Mulai Gratis Sekarang"),
+  heroCtaSecondaryText: text("hero_cta_secondary_text").notNull().default("Lihat Demo"),
+  featuresTitle: text("features_title").notNull().default("Semua yang Kamu Butuhkan"),
+  featuresSubtitle: text("features_subtitle").notNull().default("Fitur lengkap untuk undangan pernikahan digital yang sempurna"),
+  featuresData: text("features_data").notNull().default("[]"),
+  howItWorksTitle: text("how_it_works_title").notNull().default("Cara Kerja"),
+  howItWorksSubtitle: text("how_it_works_subtitle").notNull().default("Tiga langkah mudah untuk undangan impian Anda"),
+  howItWorksData: text("how_it_works_data").notNull().default("[]"),
+  ctaTitle: text("cta_title").notNull().default("Siap Membuat Undangan Impian?"),
+  ctaSubtitle: text("cta_subtitle").notNull().default("Bergabung dengan ribuan pasangan yang sudah menggunakan WedSaaS"),
+  ctaButtonText: text("cta_button_text").notNull().default("Buat Undangan Gratis"),
+  footerTagline: text("footer_tagline").notNull().default("Platform Undangan Pernikahan Digital terbaik di Indonesia"),
+  showFeatures: boolean("show_features").notNull().default(true),
+  showHowItWorks: boolean("show_how_it_works").notNull().default(true),
+  showTestimonials: boolean("show_testimonials").notNull().default(true),
+  showPricing: boolean("show_pricing").notNull().default(true),
+  showFaq: boolean("show_faq").notNull().default(true),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -256,8 +370,8 @@ export const weddingThemes = pgTable("wedding_themes", {
   slug: text("slug").notNull().unique(),
   description: text("description").notNull().default(""),
   thumbnailUrl: text("thumbnail_url"),
-  status: text("status").notNull().default("draft"), // draft | published | archived
-  globalSettings: text("global_settings").notNull().default("{}"), // JSON string
+  status: text("status").notNull().default("draft"),
+  globalSettings: text("global_settings").notNull().default("{}"),
   createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -266,10 +380,10 @@ export const weddingThemes = pgTable("wedding_themes", {
 export const weddingThemeBlocks = pgTable("wedding_theme_blocks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   themeId: varchar("theme_id").notNull().references(() => weddingThemes.id, { onDelete: "cascade" }),
-  blockType: text("block_type").notNull(), // cover|couple|quote|countdown|story|events|maps|gallery|rsvp|messages|gifts|closing|divider|text
+  blockType: text("block_type").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
-  content: text("content").notNull().default("{}"), // JSON string
-  style: text("style").notNull().default("{}"),     // JSON string
+  content: text("content").notNull().default("{}"),
+  style: text("style").notNull().default("{}"),
   isVisible: boolean("is_visible").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -296,6 +410,8 @@ export const payments = pgTable("payments", {
   amount: integer("amount").notNull(),
   uniqueCode: integer("unique_code").notNull(),
   finalAmount: integer("final_amount").notNull(),
+  couponCode: text("coupon_code"),
+  discountAmount: integer("discount_amount").notNull().default(0),
   paymentMethod: text("payment_method").notNull().default("bank_transfer"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   transferProofUrl: text("transfer_proof_url"),
@@ -305,6 +421,18 @@ export const payments = pgTable("payments", {
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ── File Uploads ──────────────────────────────────────────────────────────────
+export const fileUploads = pgTable("file_uploads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  originalName: text("original_name").notNull(),
+  storedName: text("stored_name").notNull().unique(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // ── Insert schemas ───────────────────────────────────────────────────────────
@@ -333,6 +461,14 @@ export const insertWeddingThemeSchema = createInsertSchema(weddingThemes).omit({
 export const insertWeddingThemeBlockSchema = createInsertSchema(weddingThemeBlocks).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({ id: true, createdAt: true });
+export const insertGuestSchema = createInsertSchema(guests).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMediaAssetSchema = createInsertSchema(mediaAssets).omit({ id: true, createdAt: true });
+export const insertCustomDomainSchema = createInsertSchema(customDomains).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true, createdAt: true, usedCount: true });
+export const insertCouponUsageSchema = createInsertSchema(couponUsages).omit({ id: true, createdAt: true });
+export const insertReferralUsageSchema = createInsertSchema(referralUsages).omit({ id: true, createdAt: true });
+export const insertLandingPageSettingsSchema = createInsertSchema(landingPageSettings).omit({ id: true, updatedAt: true });
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -378,21 +514,21 @@ export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
-// ── File Uploads ──────────────────────────────────────────────────────────────
-export const fileUploads = pgTable("file_uploads", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id, { onDelete: "cascade" }),
-  originalName: text("original_name").notNull(),
-  storedName: text("stored_name").notNull().unique(),
-  mimeType: text("mime_type").notNull(),
-  size: integer("size").notNull(),
-  url: text("url").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({ id: true, createdAt: true });
 export type FileUpload = typeof fileUploads.$inferSelect;
 export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
+
+export type Guest = typeof guests.$inferSelect;
+export type InsertGuest = z.infer<typeof insertGuestSchema>;
+export type MediaAsset = typeof mediaAssets.$inferSelect;
+export type InsertMediaAsset = z.infer<typeof insertMediaAssetSchema>;
+export type CustomDomain = typeof customDomains.$inferSelect;
+export type InsertCustomDomain = z.infer<typeof insertCustomDomainSchema>;
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
+export type CouponUsage = typeof couponUsages.$inferSelect;
+export type ReferralUsage = typeof referralUsages.$inferSelect;
+export type LandingPageSettings = typeof landingPageSettings.$inferSelect;
+export type InsertLandingPageSettings = z.infer<typeof insertLandingPageSettingsSchema>;
 
 export type FullInvitation = Invitation & {
   couple: InvitationCouple | null;

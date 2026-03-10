@@ -7,7 +7,8 @@ import {
   ArrowRight, Clock, Gift, MessageSquare, ChevronDown, Sparkles,
   Shield, Zap, Menu, X, Instagram, Twitter, Facebook, Eye, MessageCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemePreviewModal, { type ThemeData } from "@/components/theme-preview-modal";
 import ThemeReviewModal from "@/components/theme-review-modal";
@@ -164,6 +165,10 @@ const stats = [
 ];
 
 export default function Landing() {
+  const { data: cmsSettings } = useQuery({
+    queryKey: ["/api/public/landing-settings"],
+  });
+
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [previewTheme, setPreviewTheme] = useState<ThemeData | null>(null);
@@ -276,22 +281,21 @@ export default function Landing() {
             <span className="text-xs font-semibold text-primary">Platform Undangan Pernikahan Digital #1</span>
           </div>
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-foreground leading-[1.08] tracking-tight mb-6">
-            Undangan Pernikahan
-            <span className="block gradient-text mt-1">Digital yang Elegan</span>
+            {cmsSettings?.heroTitle || "Undangan Pernikahan Digital yang Elegan"}
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-9 leading-relaxed">
-            Buat undangan pernikahan digital yang memukau, bagikan ke semua tamu, kelola RSVP otomatis, dan terima ucapan — dalam satu platform yang indah.
+            {cmsSettings?.heroSubtitle || "Buat undangan pernikahan digital yang memukau, bagikan ke semua tamu, kelola RSVP otomatis, dan terima ucapan — dalam satu platform yang indah."}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
             <Link href="/register">
               <Button size="lg" className="gap-2 h-12 px-7 text-base font-semibold shadow-md" data-testid="button-hero-cta">
-                Coba Gratis Sekarang
+                {cmsSettings?.heroCtaText || "Coba Gratis Sekarang"}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
             <a href="#how-it-works">
               <Button size="lg" variant="outline" className="h-12 px-7 text-base font-medium" data-testid="button-demo">
-                Lihat Cara Kerja
+                {cmsSettings?.heroCtaSecondaryText || "Lihat Cara Kerja"}
               </Button>
             </a>
           </div>
@@ -321,53 +325,57 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Fitur Lengkap</Badge>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Semua yang Kamu Butuhkan</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Platform undangan pernikahan digital paling lengkap untuk momen terpenting hidupmu.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f) => (
-              <div key={f.title} className="group p-6 bg-card border border-card-border rounded-xl hover-elevate-2 transition-all duration-200 cursor-default">
-                <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
-                  <f.icon className="w-5 h-5" />
+      {(cmsSettings?.showFeatures ?? true) && (
+        <section id="features" className="py-24 px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-14">
+              <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Fitur Lengkap</Badge>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Semua yang Kamu Butuhkan</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Platform undangan pernikahan digital paling lengkap untuk momen terpenting hidupmu.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {features.map((f) => (
+                <div key={f.title} className="group p-6 bg-card border border-card-border rounded-xl hover-elevate-2 transition-all duration-200 cursor-default">
+                  <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
+                    <f.icon className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-bold text-foreground mb-2">{f.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
                 </div>
-                <h3 className="font-bold text-foreground mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-24 px-4 sm:px-6 bg-muted/30">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Mudah Digunakan</Badge>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Cara Kerja WedSaaS</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Dari pembuatan hingga membagikan undangan, hanya dalam beberapa menit saja.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {steps.map((step, i) => (
-              <div key={step.num} className="relative flex flex-col items-center text-center">
-                <div className="relative mb-5">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                    <step.icon className="w-6 h-6 text-primary" />
+      {(cmsSettings?.showHowItWorks ?? true) && (
+        <section id="how-it-works" className="py-24 px-4 sm:px-6 bg-muted/30">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-14">
+              <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Mudah Digunakan</Badge>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Cara Kerja WedSaaS</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Dari pembuatan hingga membagikan undangan, hanya dalam beberapa menit saja.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {steps.map((step, i) => (
+                <div key={step.num} className="relative flex flex-col items-center text-center">
+                  <div className="relative mb-5">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <step.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">
+                      {i + 1}
+                    </div>
                   </div>
-                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shadow-sm">
-                    {i + 1}
-                  </div>
+                  <h3 className="font-bold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
                 </div>
-                <h3 className="font-bold text-foreground mb-2">{step.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Themes */}
       <section className="py-24 px-4 sm:px-6">
@@ -493,90 +501,94 @@ export default function Landing() {
       <ThemeReviewModal theme={reviewTheme} onClose={() => setReviewTheme(null)} />
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-4 sm:px-6 bg-muted/30">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Harga Terjangkau</Badge>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Pilihan Paket</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Mulai gratis, upgrade kapan saja. Tidak ada biaya tersembunyi.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`relative rounded-2xl border bg-card overflow-hidden transition-all duration-200 ${
-                  plan.highlighted
-                    ? "border-primary shadow-xl shadow-primary/10 scale-[1.02]"
-                    : "border-card-border"
-                }`}
-              >
-                {plan.highlighted && (
-                  <div className="bg-primary text-primary-foreground text-xs font-bold text-center py-2 tracking-wide">
-                    ★ PALING POPULER ★
+      {(cmsSettings?.showPricing ?? true) && (
+        <section id="pricing" className="py-24 px-4 sm:px-6 bg-muted/30">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-14">
+              <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Harga Terjangkau</Badge>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Pilihan Paket</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-base leading-relaxed">Mulai gratis, upgrade kapan saja. Tidak ada biaya tersembunyi.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+              {plans.map((plan) => (
+                <div
+                  key={plan.name}
+                  className={`relative rounded-2xl border bg-card overflow-hidden transition-all duration-200 ${
+                    plan.highlighted
+                      ? "border-primary shadow-xl shadow-primary/10 scale-[1.02]"
+                      : "border-card-border"
+                  }`}
+                >
+                  {plan.highlighted && (
+                    <div className="bg-primary text-primary-foreground text-xs font-bold text-center py-2 tracking-wide">
+                      ★ PALING POPULER ★
+                    </div>
+                  )}
+                  <div className="p-7">
+                    <h3 className="font-extrabold text-xl text-foreground mb-1">{plan.name}</h3>
+                    <p className="text-xs text-muted-foreground mb-4 font-medium">{plan.desc}</p>
+                    <div className="mb-6">
+                      <span className="text-3xl font-extrabold text-foreground tracking-tight">{plan.price}</span>
+                      <span className="text-muted-foreground text-sm ml-1.5">/{plan.period}</span>
+                    </div>
+                    <ul className="space-y-3 mb-7">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-center gap-2.5 text-sm">
+                          <CheckCircle className={`w-4 h-4 flex-shrink-0 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
+                          <span className={plan.highlighted ? "text-foreground font-medium" : "text-muted-foreground"}>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href="/register">
+                      <Button
+                        variant={plan.highlighted ? "default" : "outline"}
+                        className={`w-full font-semibold ${plan.highlighted ? "shadow-md" : ""}`}
+                        data-testid={`button-plan-${plan.name.toLowerCase()}`}
+                      >
+                        {plan.cta}
+                      </Button>
+                    </Link>
                   </div>
-                )}
-                <div className="p-7">
-                  <h3 className="font-extrabold text-xl text-foreground mb-1">{plan.name}</h3>
-                  <p className="text-xs text-muted-foreground mb-4 font-medium">{plan.desc}</p>
-                  <div className="mb-6">
-                    <span className="text-3xl font-extrabold text-foreground tracking-tight">{plan.price}</span>
-                    <span className="text-muted-foreground text-sm ml-1.5">/{plan.period}</span>
-                  </div>
-                  <ul className="space-y-3 mb-7">
-                    {plan.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm">
-                        <CheckCircle className={`w-4 h-4 flex-shrink-0 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
-                        <span className={plan.highlighted ? "text-foreground font-medium" : "text-muted-foreground"}>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/register">
-                    <Button
-                      variant={plan.highlighted ? "default" : "outline"}
-                      className={`w-full font-semibold ${plan.highlighted ? "shadow-md" : ""}`}
-                      data-testid={`button-plan-${plan.name.toLowerCase()}`}
-                    >
-                      {plan.cta}
-                    </Button>
-                  </Link>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Testimonials */}
-      <section className="py-24 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Testimoni</Badge>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Kata Mereka</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto text-base">Bergabung dengan ribuan pasangan yang sudah mempercayai WedSaaS.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {testimonials.map((t) => (
-              <div key={t.name} className="p-6 bg-card border border-card-border rounded-2xl hover-elevate-2 flex flex-col gap-4">
-                <div className="flex gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-sm text-foreground leading-relaxed flex-1">"{t.text}"</p>
-                <div className="flex items-center gap-3 pt-2 border-t border-border">
-                  <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
-                    {t.initials}
+      {(cmsSettings?.showTestimonials ?? true) && (
+        <section className="py-24 px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-14">
+              <Badge variant="outline" className="mb-4 font-semibold text-xs px-3 py-1">Testimoni</Badge>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">Kata Mereka</h2>
+              <p className="text-muted-foreground max-w-xl mx-auto text-base">Bergabung dengan ribuan pasangan yang sudah mempercayai WedSaaS.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {testimonials.map((t) => (
+                <div key={t.name} className="p-6 bg-card border border-card-border rounded-2xl hover-elevate-2 flex flex-col gap-4">
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    ))}
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm text-foreground">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.role}</p>
+                  <p className="text-sm text-foreground leading-relaxed flex-1">"{t.text}"</p>
+                  <div className="flex items-center gap-3 pt-2 border-t border-border">
+                    <div className={`w-9 h-9 rounded-full ${t.color} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
+                      {t.initials}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">{t.role}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Trust Badges */}
       <section className="py-12 px-4 border-y border-border bg-muted/20">

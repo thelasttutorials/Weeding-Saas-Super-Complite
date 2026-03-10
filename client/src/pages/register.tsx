@@ -1,14 +1,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Heart, Loader2, CheckCircle, Star } from "lucide-react";
+import { Heart, Loader2, CheckCircle, Star, Ticket } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const registerSchema = z.object({
   fullName: z.string().min(2, "Nama minimal 2 karakter"),
@@ -16,6 +16,7 @@ const registerSchema = z.object({
   username: z.string().min(3, "Username minimal 3 karakter").regex(/^[a-z0-9_]+$/, "Hanya huruf kecil, angka, dan underscore"),
   password: z.string().min(6, "Password minimal 6 karakter"),
   confirmPassword: z.string(),
+  referralCode: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Password tidak cocok",
   path: ["confirmPassword"],
@@ -39,16 +40,31 @@ export default function Register() {
   const { register } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [location] = useLocation();
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { fullName: "", email: "", username: "", password: "", confirmPassword: "" },
+    defaultValues: { fullName: "", email: "", username: "", password: "", confirmPassword: "", referralCode: "" },
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      form.setValue("referralCode", ref);
+    }
+  }, [form]);
 
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
     setLoading(true);
     try {
-      await register({ fullName: data.fullName, email: data.email, username: data.username, password: data.password });
+      await register({ 
+        fullName: data.fullName, 
+        email: data.email, 
+        username: data.username, 
+        password: data.password,
+        referralCode: data.referralCode 
+      });
     } catch (err: any) {
       toast({ title: "Pendaftaran gagal", description: err.message || "Silakan coba lagi", variant: "destructive" });
     } finally {
@@ -175,6 +191,18 @@ export default function Register() {
                   </FormItem>
                 )} />
               </div>
+              <FormField control={form.control} name="referralCode" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-semibold">Kode Referral (Opsional)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input placeholder="KODE6DIGIT" className="h-10 pl-9" data-testid="input-referral-code" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <Button
                 type="submit"
                 className="w-full h-11 font-semibold text-sm shadow-sm mt-1"

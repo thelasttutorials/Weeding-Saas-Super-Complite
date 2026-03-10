@@ -1,0 +1,489 @@
+Saya ingin kamu menambahkan 10 fitur tambahan terbaik ke project WedSaaS yang sudah ada.
+
+PENTING:
+- gunakan codebase yang sudah ada
+- jangan bikin ulang dari nol
+- refactor seperlunya
+- setiap fitur harus usable, bukan sekadar UI
+- jika ada bagian yang belum bisa full production, buat MVP yang jujur, stabil, dan mudah dikembangkan
+- prioritaskan alur nyata, database flow, dan pengalaman pengguna
+
+Tujuan utama:
+meningkatkan WedSaaS menjadi SaaS undangan pernikahan digital yang lebih kuat, lebih premium, dan lebih lengkap.
+
+==================================================
+FITUR 1 — GUEST MANAGEMENT
+==================================================
+
+Tambahkan fitur manajemen tamu.
+
+User harus bisa:
+- melihat daftar tamu per invitation
+- menambah tamu manual
+- edit tamu
+- hapus tamu
+- cari tamu
+- filter tamu
+- kelompokkan tamu berdasarkan kategori
+
+Kategori minimal:
+- keluarga
+- teman
+- kantor
+- VIP
+- lainnya
+
+Field tamu minimal:
+- id
+- invitation_id
+- name
+- phone optional
+- email optional
+- category
+- guest_count
+- notes
+- custom_link_token / guest token
+- invited_status
+- rsvp_status
+- checked_in_status
+- created_at
+- updated_at
+
+Tambahkan halaman dashboard user:
+- Guest Management
+- Guest Import
+- Guest Detail jika perlu
+
+Tambahkan statistik kecil:
+- total guests
+- invited
+- RSVP confirmed
+- checked in
+
+==================================================
+FITUR 2 — PERSONALIZED GUEST LINK
+==================================================
+
+Tambahkan personalized guest link per tamu.
+
+Contoh:
+- /invite/ahmad-dan-sari?to=Budi
+- /invite/ahmad-dan-sari?guest=token-unik
+
+Kebutuhan:
+- jika query to ada, tampilkan nama tamu di halaman invitation
+- jika guest token ada, ambil nama tamu dari database
+- tampilkan "Kepada Yth. Nama Tamu"
+- jika guest token valid, RSVP harus terhubung ke tamu tersebut
+- satu tamu bisa punya link unik
+
+Dashboard user harus bisa:
+- generate link tamu
+- copy link tamu
+- lihat status link sudah dibagikan atau belum jika ada field invited_status
+
+==================================================
+FITUR 3 — QR CHECK-IN TAMU
+==================================================
+
+Tambahkan fitur QR check-in tamu.
+
+Kebutuhan:
+- setiap tamu bisa punya QR code unik
+- QR terkait ke guest token atau guest id
+- dashboard user punya halaman Check-in
+- user/petugas bisa scan QR tamu
+- status checked_in diperbarui ke database
+- tampilkan daftar tamu yang sudah check-in
+- tampilkan statistik tamu hadir
+
+Fitur minimal:
+- generate QR per tamu
+- halaman scanner/check-in sederhana
+- fallback input manual jika scanner tidak tersedia
+- check-in timestamp tersimpan
+
+Tambahkan halaman:
+- Guest Check-in
+- Check-in History jika perlu
+
+==================================================
+FITUR 4 — CUSTOM MUSIC YANG LEBIH RAPI
+==================================================
+
+Rapikan dan perluas fitur custom music.
+
+User harus bisa:
+- upload file musik sendiri
+atau
+- memasukkan URL musik
+- preview musik
+- ganti musik
+- hapus musik
+- pilih apakah musik aktif untuk invitation
+- pilih apakah music control ditampilkan
+
+Jika autoplay dibatasi browser:
+- tampilkan tombol play yang elegan
+- jangan buat flow rusak
+
+Simpan musik per invitation dan/atau per custom template jika arsitektur mendukung.
+
+Tambahkan:
+- volume default basic
+- label lagu optional
+- fallback jika file rusak/tidak ada
+
+==================================================
+FITUR 5 — MEDIA LIBRARY
+==================================================
+
+Tambahkan media library untuk user.
+
+User harus bisa:
+- melihat semua aset media miliknya
+- upload gambar
+- upload musik jika didukung
+- copy public URL
+- hapus media
+- filter media berdasarkan tipe
+
+Tipe media:
+- image
+- audio
+- other if needed
+
+Media library dipakai untuk:
+- galeri invitation
+- cover image
+- couple image
+- testimonial/preview jika relevan
+- custom template assets
+- music assets
+
+Gunakan Supabase Storage jika project sudah memakainya.
+Pastikan ownership scoped ke user.
+
+Tambahkan halaman:
+- Media Library
+
+==================================================
+FITUR 6 — DUPLICATE INVITATION / DUPLICATE TEMPLATE
+==================================================
+
+Tambahkan fitur duplicate.
+
+User harus bisa:
+- duplicate invitation
+- duplicate custom template
+
+Saat duplicate invitation:
+- salin struktur invitation
+- salin event details
+- salin settings
+- optional salin galeri references bila aman
+- slug baru harus unik
+- status default menjadi draft
+
+Saat duplicate template:
+- salin template sections
+- salin settings
+- hasil duplicate punya nama baru seperti "Copy of ..."
+
+Tambahkan tombol duplicate di:
+- invitation list
+- template list
+
+==================================================
+FITUR 7 — CUSTOM DOMAIN PLACEHOLDER / STRUCTURE
+==================================================
+
+Tambahkan struktur custom domain yang siap dikembangkan.
+
+Belum perlu full DNS automation jika belum siap, tapi buat flow yang usable.
+
+User Business/Premium harus bisa:
+- mengisi custom domain
+- melihat status domain:
+  - not configured
+  - pending verification
+  - active
+  - failed
+- melihat panduan singkat koneksi domain
+- menyimpan domain ke database
+
+Admin bisa:
+- melihat domain user
+- update status domain
+- memberi catatan jika perlu
+
+Tambahkan halaman:
+- Domain Settings
+
+Jangan pura-pura domain benar-benar aktif jika backend DNS belum dibangun.
+Buat struktur dan UI yang jujur, rapi, dan siap dikembangkan.
+
+==================================================
+FITUR 8 — CMS LANDING PAGE
+==================================================
+
+Tambahkan atau rapikan CMS landing page agar admin bisa mengatur website marketing.
+
+Admin harus bisa mengatur:
+- navbar
+- hero
+- features
+- how it works
+- themes showcase
+- pricing
+- testimonials
+- FAQ
+- CTA penutup
+- footer
+
+Kebutuhan:
+- data tidak hardcoded lagi
+- semua section membaca data dari database/CMS settings
+- admin bisa edit text
+- admin bisa show/hide section
+- admin bisa ubah urutan item jika relevan
+
+Pastikan landing page tetap clean dan responsive.
+
+==================================================
+FITUR 9 — COUPON / REFERRAL
+==================================================
+
+Tambahkan sistem kupon dan referral versi MVP.
+
+A. Coupon
+Admin harus bisa:
+- membuat kupon
+- menentukan tipe diskon:
+  - percentage
+  - fixed amount
+- menentukan code
+- menentukan aktif/tidak aktif
+- menentukan masa berlaku
+- menentukan maksimal penggunaan
+- menentukan plan yang berlaku jika perlu
+
+User harus bisa:
+- memasukkan coupon code saat upgrade / pembayaran manual flow
+- melihat diskon yang diterapkan
+
+B. Referral
+User harus bisa:
+- punya referral code unik
+- membagikan referral code
+- melihat jumlah referral basic
+- melihat reward placeholder/basic jika ada
+
+Admin bisa:
+- melihat referral usage
+- melihat user yang mereferensikan
+
+Jika reward automation belum siap:
+- tetap simpan data referral usage ke database
+- buat flow MVP yang jujur
+
+==================================================
+FITUR 10 — AI COPY GENERATOR PLACEHOLDER YANG USABLE
+==================================================
+
+Tambahkan fitur AI copy generator versi awal untuk membantu user membuat isi undangan.
+
+Jika AI provider belum dihubungkan, buat struktur dan UI yang usable dengan fallback generator/template logic yang jujur.
+
+User harus bisa generate:
+- opening text
+- quote pembuka
+- love story singkat
+- closing message
+- hashtag wedding sederhana
+
+Input minimal:
+- nama pasangan
+- tone/style (formal, romantis, modern, islami optional jika relevan)
+- bahasa
+- panjang teks
+
+Output:
+- text yang bisa langsung dimasukkan ke invitation builder
+- user bisa copy/insert ke field terkait
+
+Jika AI API belum tersedia:
+- gunakan template generator logic lokal yang rapi
+- jangan klaim AI live jika sebenarnya template-based
+
+Tambahkan halaman / modal:
+- AI Copy Assistant
+
+==================================================
+BAGIAN DATABASE / DATA MODEL
+==================================================
+
+Tambahkan / rapikan struktur data untuk fitur-fitur ini jika perlu:
+
+- guests
+- guest_checkins
+- media_assets
+- custom_domains
+- coupons
+- coupon_usages
+- referrals
+- referral_usages
+- ai_generation_logs optional
+- music_assets atau invitation_music jika belum ada
+
+Pastikan relasi jelas dan scoped ke user / invitation yang benar.
+
+==================================================
+BAGIAN UI / DASHBOARD
+==================================================
+
+Setelah fitur ditambahkan, rapikan dashboard agar tetap clean dan fokus.
+
+Sidebar user yang ideal setelah update:
+- Dashboard
+- Invitations
+- Guests
+- Check-in
+- Templates
+- Media Library
+- Domain Settings
+- Subscription
+- Account
+
+Sidebar admin:
+- Dashboard
+- Users
+- Invitations
+- Payments
+- Domains
+- Coupons
+- Referrals
+- CMS Landing
+- SEO/Webmaster
+- Site Settings
+
+Jika ada menu lama yang bentrok atau tidak relevan, rapikan.
+
+==================================================
+BAGIAN RESPONSIVE & USABILITY
+==================================================
+
+Pastikan semua fitur baru usable di:
+- mobile
+- tablet
+- laptop
+- desktop
+
+Perhatikan:
+- tabel guest management
+- QR check-in page
+- media library
+- template list
+- coupon forms
+- referral list
+- CMS forms
+
+Gunakan layout yang tetap clean, simpel, dan premium.
+
+==================================================
+BAGIAN AUDIT SCRIPT
+==================================================
+
+Setelah implementasi semua fitur, audit ulang seluruh script dan perbaiki:
+
+- broken routes
+- broken imports
+- dead components
+- dummy buttons
+- forms yang tidak submit
+- service layer duplikat
+- undefined/null crash
+- broken responsive layout
+- state yang tidak sinkron
+- mock data yang bentrok
+- placeholder logic yang menyesatkan
+
+Saya ingin hasil akhirnya benar-benar usable, bukan sekadar halaman baru kosong.
+
+==================================================
+OUTPUT YANG SAYA MAU
+==================================================
+
+Setelah selesai, tampilkan:
+1. daftar fitur baru yang berhasil ditambahkan
+2. daftar file yang diubah
+3. struktur data / tabel baru
+4. flow guest management
+5. flow personalized guest link
+6. flow QR check-in
+7. flow media library
+8. flow duplicate invitation/template
+9. flow custom domain
+10. flow coupon/referral
+11. flow AI copy generator
+12. hasil audit script dan perbaikan
+13. bagian yang masih MVP / placeholder jika ada
+14. kode final
+
+PENTING:
+Jangan hanya menambahkan UI baru.
+Saya ingin 10 fitur ini benar-benar usable dan memperkuat WedSaaS sebagai SaaS undangan digital premium.
+
+
+Sekarang fokus penuh ke Guest Management dan QR Check-in agar benar-benar usable.
+
+Kebutuhan:
+- CRUD tamu aktif
+- personalized guest link aktif
+- QR code per tamu aktif
+- check-in update database aktif
+- guest stats aktif
+- RSVP bisa dikaitkan ke tamu jika token guest dipakai
+
+Jangan hanya UI.
+Pastikan flow end-to-end berjalan.
+
+Sekarang fokus penuh ke Media Library dan Custom Music.
+
+Kebutuhan:
+- media upload aktif
+- media list aktif
+- delete/copy URL aktif
+- invitation bisa memilih musik dari media library
+- public invitation bisa memutar musik yang dipilih
+- ownership aman per user
+
+Pastikan ini benar-benar usable.
+
+Sekarang fokus ke Coupon, Referral, dan Custom Domain.
+
+Kebutuhan:
+- admin bisa membuat coupon
+- user bisa memakai coupon
+- referral code user aktif
+- referral usage tercatat
+- domain settings tersimpan
+- admin bisa update status custom domain
+
+Gunakan flow MVP yang jujur dan stabil.
+
+
+Sekarang fokus ke CMS Landing Page dan audit final seluruh project.
+
+Kebutuhan:
+- landing page membaca data CMS
+- admin bisa edit section utama
+- tidak ada data marketing hardcoded besar
+- audit semua route dan script
+- hapus dead code
+- rapikan dashboard setelah semua fitur baru ditambahkan
+
+Tujuan:
+WedSaaS benar-benar siap dipakai dan terasa premium.
+
+

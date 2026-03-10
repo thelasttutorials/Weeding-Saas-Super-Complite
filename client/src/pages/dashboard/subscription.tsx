@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Crown, Zap, Building2, Copy, ExternalLink, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle, Crown, Zap, Building2, Copy, ExternalLink, Clock, AlertCircle, Loader2, Ticket } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient as qc } from "@/lib/queryClient";
@@ -74,6 +75,8 @@ export default function Subscription() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<typeof plans[0] | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [discountInfo, setDiscountInfo] = useState<{ valid: boolean; discountAmount: number; message?: string } | null>(null);
 
   const { data: bankAccounts, isLoading: bankLoading } = useQuery<BankAccount[]>({
     queryKey: ["/api/bank-accounts"],
@@ -84,12 +87,27 @@ export default function Subscription() {
     queryKey: ["/api/payments"],
   });
 
+  const validateCouponMutation = useMutation({
+    mutationFn: (data: { code: string; plan: string }) => 
+      apiRequest("POST", "/api/coupons/validate", data).then(res => res.json()),
+    onSuccess: (data) => {
+      setDiscountInfo(data);
+      if (!data.valid) {
+        toast({ title: "Kupon tidak valid", description: data.message, variant: "destructive" });
+      } else {
+        toast({ title: "Kupon berhasil dipasang", description: `Diskon Rp ${data.discountAmount.toLocaleString()}` });
+      }
+    },
+  });
+
   const createMutation = useMutation({
-    mutationFn: (plan: string) => apiRequest("POST", "/api/payments", { plan }),
+    mutationFn: (plan: string) => apiRequest("POST", "/api/payments", { plan, couponCode: discountInfo?.valid ? couponCode : undefined }),
     onSuccess: async (res) => {
       const data = await res.json();
       qc.invalidateQueries({ queryKey: ["/api/payments"] });
       setSelectedPlan(null);
+      setCouponCode("");
+      setDiscountInfo(null);
       setLocation(`/dashboard/billing/${data.id}`);
     },
     onError: async (err: any) => {
@@ -102,6 +120,13 @@ export default function Subscription() {
   const handleUpgrade = (plan: typeof plans[0]) => {
     if (plan.id === "free") return;
     setSelectedPlan(plan);
+    setCouponCode("");
+    setDiscountInfo(null);
+  };
+
+  const handleApplyCoupon = () => {
+    if (!selectedPlan || !couponCode) return;
+    validateCouponMutation.mutate({ code: couponCode, plan: selectedPlan.id });
   };
 
   return (
@@ -245,6 +270,12 @@ export default function Subscription() {
                   <span className="text-muted-foreground">Harga</span>
                   <span className="font-medium">{selectedPlan.price} / {selectedPlan.period}</span>
                 </div>
+                {discountInfo?.valid && (
+                  <div className="flex justify-between text-sm text-green-600 font-medium">
+                    <span>Diskon (Kupon: {couponCode})</span>
+                    <span>- Rp {discountInfo.discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Metode</span>
                   <span className="font-medium">Transfer Bank</span>
@@ -252,9 +283,40 @@ export default function Subscription() {
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between text-sm font-semibold">
                     <span>Nominal Transfer</span>
-                    <span className="text-primary">{selectedPlan.price} + kode unik 3 digit</span>
+                    <span className="text-primary">
+                      {discountInfo?.valid 
+                        ? formatRp(selectedPlan.amount - discountInfo.discountAmount)
+                        : selectedPlan.price
+                      } + kode unik
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Kode unik akan ditampilkan setelah invoice dibuat untuk memudahkan identifikasi pembayaran.</p>
+                </div>
+              </div>
+
+              {/* Coupon input */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Punya Kode Kupon?</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Ticket className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Masukkan kode..." 
+                      className="pl-9 h-9" 
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      data-testid="input-coupon-code"
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleApplyCoupon}
+                    disabled={!couponCode || validateCouponMutation.isPending}
+                    data-testid="button-apply-coupon"
+                  >
+                    {validateCouponMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Gunakan"}
+                  </Button>
                 </div>
               </div>
 

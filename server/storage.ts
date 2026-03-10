@@ -7,6 +7,7 @@ import {
   testimonials, faqs, pricingPlans, pricingPlanFeatures, auditLogs,
   websiteSettings, seoSettings, weddingThemes, weddingThemeBlocks,
   bankAccounts, payments, fileUploads,
+  guests, mediaAssets, customDomains, coupons, couponUsages, referralUsages, landingPageSettings,
   type User, type InsertUser, type Invitation, type InsertInvitation,
   type InvitationCouple, type InvitationEvents, type InvitationContent,
   type GalleryImage, type Rsvp, type InsertRsvp, type GuestMessage,
@@ -25,7 +26,14 @@ import {
   type BankAccount, type InsertBankAccount,
   type Payment, type InsertPayment,
   type FileUpload, type InsertFileUpload,
+  type Guest, type InsertGuest,
+  type MediaAsset, type InsertMediaAsset,
+  type CustomDomain, type InsertCustomDomain,
+  type Coupon, type InsertCoupon,
+  type CouponUsage,
+  type ReferralUsage, type LandingPageSettings,
 } from "@shared/schema";
+
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -92,6 +100,57 @@ export interface IStorage {
   getWhiteLabelByUser(userId: string): Promise<WhiteLabelSettings | undefined>;
   upsertWhiteLabel(data: InsertWhiteLabel): Promise<WhiteLabelSettings>;
 
+  // Guest Management
+  getGuestsByInvitation(invId: string): Promise<Guest[]>;
+  getGuestById(id: string): Promise<Guest | undefined>;
+  getGuestByToken(token: string): Promise<Guest | undefined>;
+  createGuest(data: InsertGuest): Promise<Guest>;
+  updateGuest(id: string, data: Partial<Guest>): Promise<Guest | undefined>;
+  deleteGuest(id: string): Promise<void>;
+  checkInGuest(id: string): Promise<Guest | undefined>;
+  getGuestStats(invId: string): Promise<{
+    total: number;
+    invited: number;
+    attending: number;
+    checkedIn: number;
+  }>;
+
+  // Media Library
+  getMediaAssetsByUser(userId: string): Promise<MediaAsset[]>;
+  createMediaAsset(data: InsertMediaAsset): Promise<MediaAsset>;
+  getMediaAsset(id: string): Promise<MediaAsset | undefined>;
+  deleteMediaAsset(id: string): Promise<void>;
+
+  // Coupons
+  getCoupons(): Promise<Coupon[]>;
+  getCoupon(id: string): Promise<Coupon | undefined>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  createCoupon(data: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: string): Promise<void>;
+  validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discount: number; message?: string }>;
+
+  // Referrals
+  getReferralStats(userId: string): Promise<{ total: number }>;
+  getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]>;
+
+  // Custom Domains
+  getCustomDomainByUser(userId: string): Promise<CustomDomain | undefined>;
+  getCustomDomainById(id: string): Promise<CustomDomain | undefined>;
+  upsertCustomDomain(userId: string, domain: string): Promise<CustomDomain>;
+  getAllCustomDomains(): Promise<(CustomDomain & { username: string })[]>;
+  updateCustomDomainStatus(id: string, status: string, adminNotes?: string): Promise<CustomDomain | undefined>;
+
+  // AI Copy Assistant
+  generateAICopy(type: string, groomName: string, brideName: string, tone: string, language: string, length: string): string;
+
+  // CMS Landing Page
+  getLandingPageSettings(): Promise<any>;
+  updateLandingPageSettings(data: any): Promise<any>;
+
+  // Duplicate Invitation
+  duplicateInvitation(id: string): Promise<Invitation>;
+
   // Stats
   getUserStats(userId: string): Promise<{
     totalInvitations: number;
@@ -145,6 +204,20 @@ export interface IStorage {
   getAllUsers(): Promise<Omit<User, "password">[]>;
   getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]>;
 
+  // Guests
+  getGuestsByInvitation(invId: string): Promise<Guest[]>;
+  getGuestById(id: string): Promise<Guest | undefined>;
+  getGuestByToken(token: string): Promise<Guest | undefined>;
+  createGuest(data: InsertGuest): Promise<Guest>;
+  updateGuest(id: string, data: Partial<Guest>): Promise<Guest | undefined>;
+  deleteGuest(id: string): Promise<void>;
+  getGuestStats(invId: string): Promise<{
+    total: number;
+    invited: number;
+    rsvpAttending: number;
+    checkedIn: number;
+  }>;
+
   // File Uploads
   createFileUpload(data: InsertFileUpload): Promise<FileUpload>;
   getFileUploadsByUser(userId: string): Promise<FileUpload[]>;
@@ -163,6 +236,25 @@ export interface IStorage {
   getAdminPayments(filters?: { status?: string; search?: string }): Promise<(Payment & { username: string; email: string })[]>;
   expireOverduePayments(): Promise<void>;
   getUniqueCodeConflict(amount: number, code: number): Promise<boolean>;
+
+  // Coupons
+  getCoupons(): Promise<Coupon[]>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  createCoupon(data: InsertCoupon): Promise<Coupon>;
+  updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: string): Promise<void>;
+  validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discountAmount: number; message?: string }>;
+
+  // Referrals
+  getReferralStats(userId: string): Promise<{ totalReferrals: number }>;
+  createReferralUsage(referrerId: string, refereeId: string): Promise<void>;
+  getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]>;
+
+  // Custom Domains
+  getCustomDomainByUser(userId: string): Promise<CustomDomain | undefined>;
+  upsertCustomDomain(userId: string, domain: string): Promise<CustomDomain>;
+  getAllCustomDomains(): Promise<(CustomDomain & { username: string })[]>;
+  updateCustomDomainStatus(id: string, status: string, adminNotes?: string): Promise<CustomDomain | undefined>;
 
   // Wedding Theme Builder
   getWeddingThemes(): Promise<WeddingTheme[]>;
@@ -446,6 +538,325 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async duplicateInvitation(id: string): Promise<Invitation> {
+    const inv = await this.getInvitationById(id);
+    if (!inv) throw new Error("Invitation not found");
+
+    const newId = randomUUID();
+    const newSlug = `${inv.slug}-copy-${Math.floor(Math.random() * 1000)}`;
+
+    const [newInv] = await this.db.insert(invitations).values({
+      ...inv,
+      id: newId,
+      slug: newSlug,
+      status: "draft",
+      views: 0,
+      publishedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+
+    // Copy related records
+    const couple = await this.getCoupleByInvitation(id);
+    if (couple) {
+      await this.db.insert(invitationCouples).values({
+        ...couple,
+        id: randomUUID(),
+        invitationId: newId,
+      });
+    }
+
+    const events = await this.getEventsByInvitation(id);
+    if (events) {
+      await this.db.insert(invitationEvents).values({
+        ...events,
+        id: randomUUID(),
+        invitationId: newId,
+      });
+    }
+
+    const content = await this.getContentByInvitation(id);
+    if (content) {
+      await this.db.insert(invitationContent).values({
+        ...content,
+        id: randomUUID(),
+        invitationId: newId,
+      });
+    }
+
+    const gallery = await this.getGalleryByInvitation(id);
+    if (gallery.length > 0) {
+      await this.db.insert(invitationGallery).values(
+        gallery.map(img => ({
+          ...img,
+          id: randomUUID(),
+          invitationId: newId,
+          createdAt: new Date(),
+        }))
+      );
+    }
+
+    return newInv;
+  }
+
+  generateAICopy(type: string, groomName: string, brideName: string, tone: string, language: string, length: string): string {
+    const templates: Record<string, any> = {
+      opening_text: {
+        id: {
+          formal: "Dengan memohon rahmat Allah SWT, kami bermaksud mengundang Bapak/Ibu/Saudara/i ke acara pernikahan kami, {groom} & {bride}.",
+          casual: "Hai! Kami {groom} & {bride} ingin berbagi kebahagiaan di hari pernikahan kami nanti.",
+        }
+      },
+      quote: {
+        id: {
+          romantic: "\"Cinta tidak terlihat dengan mata, tetapi dengan hati.\" — William Shakespeare. Inilah awal perjalanan cinta {groom} & {bride}.",
+        }
+      },
+      love_story: {
+        id: {
+          short: "{groom} dan {bride} pertama kali bertemu di sebuah kafe kecil. Dari sana, benih cinta mulai tumbuh hingga akhirnya memutuskan untuk selamanya bersama.",
+        }
+      },
+      closing_message: {
+        id: {
+          formal: "Merupakan suatu kehormatan bagi kami apabila Bapak/Ibu berkenan hadir memberikan doa restu bagi kedua mempelai.",
+        }
+      },
+      hashtag: {
+        id: {
+          standard: "#{groom}{bride}Wedding, #{bride}{groom}Sah",
+        }
+      }
+    };
+
+    const typeTemplates = templates[type] || templates['opening_text'];
+    const langTemplates = typeTemplates[language] || typeTemplates['id'];
+    const template = langTemplates[tone] || Object.values(langTemplates)[0] as string;
+
+    return template.replace(/{groom}/g, groomName).replace(/{bride}/g, brideName);
+  }
+
+  async getLandingPageSettings() {
+    let [settings] = await this.db.select().from(landingPageSettings).where(eq(landingPageSettings.id, 1));
+    if (!settings) {
+      [settings] = await this.db.insert(landingPageSettings).values({ id: 1 }).returning();
+    }
+    return settings;
+  }
+
+  async updateLandingPageSettings(data: any) {
+    const [updated] = await this.db.update(landingPageSettings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(landingPageSettings.id, 1))
+      .returning();
+    return updated;
+  }
+
+  async getGuestsByInvitation(invId: string): Promise<Guest[]> {
+    return this.db.select().from(guests).where(eq(guests.invitationId, invId)).orderBy(desc(guests.createdAt));
+  }
+
+  async getGuestById(id: string): Promise<Guest | undefined> {
+    const [g] = await this.db.select().from(guests).where(eq(guests.id, id));
+    return g;
+  }
+
+  async getGuestByToken(token: string): Promise<Guest | undefined> {
+    const [g] = await this.db.select().from(guests).where(eq(guests.customLinkToken, token));
+    return g;
+  }
+
+  async createGuest(data: InsertGuest): Promise<Guest> {
+    const [g] = await this.db.insert(guests).values({
+      ...data,
+      id: randomUUID(),
+      customLinkToken: randomUUID().split("-")[0],
+    }).returning();
+    return g;
+  }
+
+  async updateGuest(id: string, data: Partial<Guest>): Promise<Guest | undefined> {
+    const [updated] = await this.db.update(guests).set(data).where(eq(guests.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGuest(id: string): Promise<void> {
+    await this.db.delete(guests).where(eq(guests.id, id));
+  }
+
+  async checkInGuest(id: string): Promise<Guest | undefined> {
+    const [updated] = await this.db.update(guests)
+      .set({ checkedIn: true, checkedInAt: new Date() })
+      .where(eq(guests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getGuestStats(invId: string) {
+    const all = await this.getGuestsByInvitation(invId);
+    return {
+      total: all.length,
+      invited: all.filter(g => g.invitedStatus).length,
+      rsvpAttending: all.filter(g => g.rsvpStatus === "attending").length,
+      checkedIn: all.filter(g => g.checkedIn).length,
+    };
+  }
+
+  // ── Media Library ─────────────────────────────────────────────────────────────
+
+  async getMediaAssetsByUser(userId: string): Promise<MediaAsset[]> {
+    return this.db.select().from(mediaAssets).where(eq(mediaAssets.userId, userId)).orderBy(desc(mediaAssets.createdAt));
+  }
+
+  async createMediaAsset(data: InsertMediaAsset): Promise<MediaAsset> {
+    const [res] = await this.db.insert(mediaAssets).values({ ...data, id: randomUUID() }).returning();
+    return res;
+  }
+
+  async getMediaAsset(id: string): Promise<MediaAsset | undefined> {
+    const [res] = await this.db.select().from(mediaAssets).where(eq(mediaAssets.id, id));
+    return res;
+  }
+
+  async deleteMediaAsset(id: string): Promise<void> {
+    await this.db.delete(mediaAssets).where(eq(mediaAssets.id, id));
+  }
+
+  async getCoupons(): Promise<Coupon[]> {
+    return this.db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  async getCoupon(id: string): Promise<Coupon | undefined> {
+    const [c] = await this.db.select().from(coupons).where(eq(coupons.id, id));
+    return c;
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [c] = await this.db.select().from(coupons).where(eq(coupons.code, code.toUpperCase()));
+    return c;
+  }
+
+  async createCoupon(data: InsertCoupon): Promise<Coupon> {
+    const [c] = await this.db.insert(coupons).values({ ...data, id: randomUUID(), code: data.code.toUpperCase() }).returning();
+    return c;
+  }
+
+  async updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined> {
+    const [updated] = await this.db.update(coupons).set(data).where(eq(coupons.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCoupon(id: string): Promise<void> {
+    await this.db.delete(coupons).where(eq(coupons.id, id));
+  }
+
+  async validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discountAmount: number; message?: string }> {
+    const coupon = await this.getCouponByCode(code);
+    if (!coupon || !coupon.isActive) return { valid: false, discountAmount: 0, message: "Kupon tidak ditemukan atau tidak aktif" };
+    
+    const now = new Date();
+    if (coupon.validFrom && now < coupon.validFrom) return { valid: false, discountAmount: 0, message: "Kupon belum bisa digunakan" };
+    if (coupon.validUntil && now > coupon.validUntil) return { valid: false, discountAmount: 0, message: "Kupon sudah kadaluwarsa" };
+    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return { valid: false, discountAmount: 0, message: "Kupon sudah mencapai batas penggunaan" };
+    if (amount < coupon.minAmount) return { valid: false, discountAmount: 0, message: `Minimal transaksi Rp ${coupon.minAmount.toLocaleString("id-ID")}` };
+    if (coupon.applicablePlans && coupon.applicablePlans.length > 0 && !coupon.applicablePlans.includes(plan)) {
+      return { valid: false, discountAmount: 0, message: "Kupon tidak berlaku untuk paket ini" };
+    }
+
+    let discountAmount = 0;
+    if (coupon.discountType === "percentage") {
+      discountAmount = Math.floor((amount * coupon.discountValue) / 100);
+    } else {
+      discountAmount = coupon.discountValue;
+    }
+
+    return { valid: true, discountAmount: Math.min(discountAmount, amount) };
+  }
+
+  async getReferralStats(userId: string): Promise<{ totalReferrals: number }> {
+    const [res] = await this.db.select({ count: sql`count(*)` }).from(referralUsages).where(eq(referralUsages.referrerId, userId));
+    return { totalReferrals: Number((res as any)?.count || 0) };
+  }
+
+  async createReferralUsage(referrerId: string, refereeId: string): Promise<void> {
+    await this.db.insert(referralUsages).values({
+      id: randomUUID(),
+      referrerId,
+      refereeId,
+    });
+  }
+
+  async getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]> {
+    const res = await this.db.select({
+      id: referralUsages.id,
+      referrerId: referralUsages.referrerId,
+      refereeId: referralUsages.refereeId,
+      createdAt: referralUsages.createdAt,
+      referrerUsername: users.username,
+      refereeUsername: sql`u2.username`,
+    })
+    .from(referralUsages)
+    .leftJoin(users, eq(referralUsages.referrerId, users.id))
+    .leftJoin(sql`${users} as u2`, eq(referralUsages.refereeId, sql`u2.id`));
+    
+    return res.map((row: any) => ({
+      id: row.id,
+      referrerId: row.referrerId,
+      refereeId: row.refereeId,
+      createdAt: row.createdAt,
+      referrerUsername: row.referrerUsername || "unknown",
+      refereeUsername: row.refereeUsername || "unknown",
+    }));
+  }
+
+  async getCustomDomainByUser(userId: string): Promise<CustomDomain | undefined> {
+    const [d] = await this.db.select().from(customDomains).where(eq(customDomains.userId, userId));
+    return d;
+  }
+
+  async getCustomDomainById(id: string): Promise<CustomDomain | undefined> {
+    const [d] = await this.db.select().from(customDomains).where(eq(customDomains.id, id));
+    return d;
+  }
+
+  async upsertCustomDomain(userId: string, domain: string): Promise<CustomDomain> {
+    const existing = await this.getCustomDomainByUser(userId);
+    if (existing) {
+      const [updated] = await this.db.update(customDomains).set({ domain, status: "pending", updatedAt: new Date() }).where(eq(customDomains.userId, userId)).returning();
+      return updated;
+    }
+    const [created] = await this.db.insert(customDomains).values({ id: randomUUID(), userId, domain, status: "pending" }).returning();
+    return created;
+  }
+
+  async getAllCustomDomains(): Promise<(CustomDomain & { username: string })[]> {
+    const res = await this.db.select({
+      id: customDomains.id,
+      userId: customDomains.userId,
+      domain: customDomains.domain,
+      status: customDomains.status,
+      verifiedAt: customDomains.verifiedAt,
+      adminNotes: customDomains.adminNotes,
+      createdAt: customDomains.createdAt,
+      updatedAt: customDomains.updatedAt,
+      username: users.username,
+    })
+    .from(customDomains)
+    .leftJoin(users, eq(customDomains.userId, users.id));
+    return res.map((row: any) => ({
+      ...row,
+      username: row.username || "unknown"
+    }));
+  }
+
+  async updateCustomDomainStatus(id: string, status: string, adminNotes?: string): Promise<CustomDomain | undefined> {
+    const [updated] = await this.db.update(customDomains)
+      .set({ status, adminNotes, verifiedAt: status === "active" ? new Date() : null, updatedAt: new Date() })
+      .where(eq(customDomains.id, id))
+      .returning();
+    return updated;
+  }
+
   async getUserStats(userId: string) {
     const userInvitations = await this.getInvitationsByUser(userId);
     let totalRsvp = 0, totalMessages = 0, totalViews = 0, attendingCount = 0, totalGiftConfirmations = 0;
@@ -645,41 +1056,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<Omit<User, "password">[]> {
-    const result = await this.db.select({
-      id: users.id,
-      username: users.username,
-      fullName: users.fullName,
-      email: users.email,
-      avatarUrl: users.avatarUrl,
-      plan: users.plan,
-      isAdmin: users.isAdmin,
-      isSuspended: users.isSuspended,
-      createdAt: users.createdAt,
-    }).from(users).orderBy(desc(users.createdAt));
-    return result;
+    const list = await this.db.select().from(users).orderBy(desc(users.createdAt));
+    return list.map(({ password, ...user }) => ({
+      ...user,
+      referralCode: user.referralCode || null,
+    }));
   }
 
   async getAllInvitations(): Promise<(Invitation & { ownerUsername: string })[]> {
-    const result = await this.db
+    const results = await this.db
       .select({
-        id: invitations.id,
-        userId: invitations.userId,
-        title: invitations.title,
-        slug: invitations.slug,
-        theme: invitations.theme,
-        status: invitations.status,
-        coverImage: invitations.coverImage,
-        giftAddress: invitations.giftAddress,
-        views: invitations.views,
-        publishedAt: invitations.publishedAt,
-        createdAt: invitations.createdAt,
-        updatedAt: invitations.updatedAt,
+        invitation: invitations,
         ownerUsername: users.username,
       })
       .from(invitations)
       .leftJoin(users, eq(invitations.userId, users.id))
       .orderBy(desc(invitations.createdAt));
-    return result.map(r => ({ ...r, ownerUsername: r.ownerUsername || "unknown" }));
+
+    return results.map(r => ({
+      ...r.invitation,
+      ownerUsername: r.ownerUsername || "Unknown",
+      customThemeId: r.invitation.customThemeId || null,
+    }));
   }
 
   async getPlatformStats() {
@@ -704,6 +1102,147 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── Wedding Theme Builder ─────────────────────────────────────────────────
+
+  // Coupons
+  async getCoupons(): Promise<Coupon[]> {
+    return this.db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [coupon] = await this.db.select().from(coupons).where(eq(coupons.code, code));
+    return coupon;
+  }
+
+  async createCoupon(data: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await this.db.insert(coupons).values({ ...data, id: randomUUID() }).returning();
+    return coupon;
+  }
+
+  async updateCoupon(id: string, data: Partial<Coupon>): Promise<Coupon | undefined> {
+    const [updated] = await this.db.update(coupons).set(data).where(eq(coupons.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCoupon(id: string): Promise<void> {
+    await this.db.delete(coupons).where(eq(coupons.id, id));
+  }
+
+  async validateCoupon(code: string, plan: string, amount: number): Promise<{ valid: boolean; discountAmount: number; message?: string }> {
+    const coupon = await this.getCouponByCode(code);
+    if (!coupon) return { valid: false, discountAmount: 0, message: "Kupon tidak ditemukan" };
+    if (!coupon.isActive) return { valid: false, discountAmount: 0, message: "Kupon tidak aktif" };
+    
+    const now = new Date();
+    if (coupon.validFrom && now < coupon.validFrom) return { valid: false, discountAmount: 0, message: "Kupon belum berlaku" };
+    if (coupon.validUntil && now > coupon.validUntil) return { valid: false, discountAmount: 0, message: "Kupon sudah kadaluarsa" };
+    
+    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return { valid: false, discountAmount: 0, message: "Kuota kupon sudah habis" };
+    
+    if (amount < coupon.minAmount) return { valid: false, discountAmount: 0, message: `Minimal transaksi ${coupon.minAmount}` };
+    
+    if (coupon.applicablePlans && coupon.applicablePlans.length > 0 && !coupon.applicablePlans.includes(plan)) {
+      return { valid: false, discountAmount: 0, message: "Kupon tidak berlaku untuk paket ini" };
+    }
+
+    let discountAmount = 0;
+    if (coupon.discountType === "percentage") {
+      discountAmount = Math.floor((amount * coupon.discountValue) / 100);
+    } else {
+      discountAmount = coupon.discountValue;
+    }
+
+    return { valid: true, discountAmount: Math.min(discountAmount, amount) };
+  }
+
+  // Referrals
+  async getReferralStats(userId: string): Promise<{ totalReferrals: number }> {
+    const [res] = await this.db.select({ count: sql<number>`count(*)::int` }).from(referralUsages).where(eq(referralUsages.referrerId, userId));
+    return { totalReferrals: res?.count || 0 };
+  }
+
+  async createReferralUsage(referrerId: string, refereeId: string): Promise<void> {
+    await this.db.insert(referralUsages).values({
+      id: randomUUID(),
+      referrerId,
+      refereeId,
+    });
+  }
+
+  async getReferralUsages(): Promise<(ReferralUsage & { referrerUsername: string; refereeUsername: string })[]> {
+    const results = await this.db.execute(sql`
+      SELECT ru.*, u1.username as referrer_username, u2.username as referee_username
+      FROM referral_usages ru
+      JOIN users u1 ON ru.referrer_id = u1.id
+      JOIN users u2 ON ru.referee_id = u2.id
+      ORDER BY ru.created_at DESC
+    `);
+    
+    return results.rows.map((row: any) => ({
+      id: row.id,
+      referrerId: row.referrer_id,
+      refereeId: row.referee_id,
+      createdAt: new Date(row.created_at),
+      referrerUsername: row.referrer_username,
+      refereeUsername: row.referee_username,
+    }));
+  }
+
+  // Custom Domains
+  async getCustomDomainByUser(userId: string): Promise<CustomDomain | undefined> {
+    const [domain] = await this.db.select().from(customDomains).where(eq(customDomains.userId, userId));
+    return domain;
+  }
+
+  async upsertCustomDomain(userId: string, domain: string): Promise<CustomDomain> {
+    const existing = await this.getCustomDomainByUser(userId);
+    if (existing) {
+      const [updated] = await this.db.update(customDomains)
+        .set({ domain, status: "pending", updatedAt: new Date() })
+        .where(eq(customDomains.userId, userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await this.db.insert(customDomains).values({
+      id: randomUUID(),
+      userId,
+      domain,
+      status: "pending",
+    }).returning();
+    return created;
+  }
+
+  async getAllCustomDomains(): Promise<(CustomDomain & { username: string })[]> {
+    const results = await this.db.execute(sql`
+      SELECT cd.*, u.username
+      FROM custom_domains cd
+      JOIN users u ON cd.user_id = u.id
+      ORDER BY cd.created_at DESC
+    `);
+
+    return results.rows.map((row: any) => ({
+      id: row.id,
+      userId: row.user_id,
+      domain: row.domain,
+      status: row.status as any,
+      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
+      adminNotes: row.admin_notes,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      username: row.username,
+    }));
+  }
+
+  async updateCustomDomainStatus(id: string, status: string, adminNotes?: string): Promise<CustomDomain | undefined> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    if (status === "active") updateData.verifiedAt = new Date();
+
+    const [updated] = await this.db.update(customDomains)
+      .set(updateData)
+      .where(eq(customDomains.id, id))
+      .returning();
+    return updated;
+  }
 
   async getWeddingThemes(): Promise<WeddingTheme[]> {
     return this.db.select().from(weddingThemes).orderBy(desc(weddingThemes.createdAt));
@@ -911,6 +1450,23 @@ export class DatabaseStorage implements IStorage {
     return this.db.select().from(fileUploads)
       .where(eq(fileUploads.uploadedBy, userId))
       .orderBy(desc(fileUploads.createdAt));
+  }
+  async duplicateInvitation(id: string): Promise<Invitation> {
+    const [source] = await this.db.select().from(invitations).where(eq(invitations.id, id));
+    if (!source) throw new Error("Invitation not found");
+
+    const newId = randomUUID();
+    const [duplicated] = await this.db.insert(invitations).values({
+      ...source,
+      id: newId,
+      title: `${source.title} (Copy)`,
+      slug: `${source.slug}-${Math.random().toString(36).substring(2, 6)}`,
+      status: "draft",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+
+    return duplicated;
   }
 }
 

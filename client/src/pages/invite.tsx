@@ -217,6 +217,38 @@ export default function InvitePage() {
     );
   }
 
+  const [playingMusic, setPlayingMusic] = useState(false);
+  const [audio] = useState(() => new Audio());
+
+  useEffect(() => {
+    if (!invitation?.content?.backgroundMusic || !invitation.content.musicEnabled) return;
+    
+    audio.src = invitation.content.backgroundMusic;
+    audio.loop = true;
+    
+    // Autoplay might be blocked, so we'll handle it via an interaction or opening of the invitation
+    const playAudio = () => {
+      audio.play().then(() => setPlayingMusic(true)).catch(() => setPlayingMusic(false));
+    };
+
+    // If invitation is loaded, try to play when user interacts (like clicking "Buka Undangan")
+    // For now we just prepare it.
+    
+    return () => {
+      audio.pause();
+      audio.src = "";
+    };
+  }, [invitation, audio]);
+
+  const toggleMusic = () => {
+    if (playingMusic) {
+      audio.pause();
+      setPlayingMusic(false);
+    } else {
+      audio.play().then(() => setPlayingMusic(true));
+    }
+  };
+
   const styles = getThemeStyles(invitation.theme);
   const couple = invitation.couple;
   const events = invitation.events;
@@ -238,6 +270,31 @@ export default function InvitePage() {
 
   return (
     <div className={`min-h-screen ${styles.bg} font-serif`} style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+      {/* Music Control */}
+      {content?.musicEnabled && content?.showMusicControl && (
+        <button
+          onClick={toggleMusic}
+          className="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover-elevate active-elevate-2 transition-all"
+          data-testid="button-toggle-music"
+        >
+          {playingMusic ? (
+            <div className="relative w-6 h-6 flex items-center justify-center">
+              <Music className="w-5 h-5 animate-pulse" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-full h-full border-2 border-white/30 rounded-full animate-ping" />
+              </div>
+            </div>
+          ) : (
+            <Music className="w-5 h-5 opacity-50" />
+          )}
+          {content.musicLabel && playingMusic && (
+            <div className="absolute left-14 bg-black/60 backdrop-blur-md border border-white/20 rounded-md px-3 py-1.5 whitespace-nowrap overflow-hidden max-w-[200px]">
+              <p className="text-[10px] font-sans text-white/90 animate-marquee">{content.musicLabel}</p>
+            </div>
+          )}
+        </button>
+      )}
+
       {/* Opening / Hero Cover */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4">
         {invitation.coverImage ? (
@@ -296,6 +353,18 @@ export default function InvitePage() {
             </div>
           )}
 
+          <button
+            onClick={() => {
+              document.getElementById("section-couple")?.scrollIntoView({ behavior: "smooth" });
+              if (invitation.content?.musicEnabled && !playingMusic) {
+                audio.play().then(() => setPlayingMusic(true)).catch(err => console.error("Autoplay failed:", err));
+              }
+            }}
+            className="px-8 py-3 rounded-full bg-white text-stone-900 font-sans font-bold text-sm hover-elevate active-elevate-2 transition-all mb-8"
+            data-testid="button-open-invitation"
+          >
+            Buka Undangan
+          </button>
           <button
             onClick={() => document.getElementById("section-couple")?.scrollIntoView({ behavior: "smooth" })}
             className="text-white/50 animate-bounce mx-auto block"

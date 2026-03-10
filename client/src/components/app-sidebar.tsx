@@ -6,32 +6,48 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Mail, CheckSquare, MessageSquare,
-  Gift, BarChart3, CreditCard, Settings, Heart, LogOut, Crown, Images, Shield,
+  Gift, BarChart3, CreditCard, Settings, Heart, LogOut, Crown,
+  Images, Shield, Globe, Image,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const navItems = [
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Undangan", url: "/dashboard/invitations", icon: Mail },
-  { title: "RSVP", url: "/dashboard/rsvp", icon: CheckSquare },
-  { title: "Pesan Tamu", url: "/dashboard/messages", icon: MessageSquare },
-  { title: "Digital Gift", url: "/dashboard/gifts", icon: Gift },
-  { title: "Galeri", url: "/dashboard/gallery", icon: Images },
-  { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
-];
-
-const bottomItems = [
-  { title: "Langganan", url: "/dashboard/subscription", icon: CreditCard },
-  { title: "Pengaturan", url: "/dashboard/settings", icon: Settings },
+const navGroups = [
+  {
+    label: "Undangan",
+    items: [
+      { title: "Overview", url: "/dashboard", exact: true, icon: LayoutDashboard },
+      { title: "Undangan", url: "/dashboard/invitations", icon: Mail },
+      { title: "RSVP", url: "/dashboard/rsvp", icon: CheckSquare },
+      { title: "Pesan Tamu", url: "/dashboard/messages", icon: MessageSquare },
+      { title: "Digital Gift", url: "/dashboard/gifts", icon: Gift },
+      { title: "Galeri", url: "/dashboard/gallery", icon: Images },
+      { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Konten",
+    items: [
+      { title: "Media Library", url: "/dashboard/media", icon: Image },
+    ],
+  },
+  {
+    label: "Akun",
+    items: [
+      { title: "Domain", url: "/dashboard/domain", icon: Globe },
+      { title: "Langganan", url: "/dashboard/subscription", icon: CreditCard },
+      { title: "Pengaturan", url: "/dashboard/settings", icon: Settings },
+    ],
+  },
 ];
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
 
-  const isActive = (url: string) => {
+  const isActive = (url: string, exact?: boolean) => {
+    if (exact) return location === url;
     if (url === "/dashboard") return location === "/dashboard";
     return location.startsWith(url);
   };
@@ -58,66 +74,43 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="pt-3 pb-2 gap-0">
-        <SidebarGroup className="px-2">
-          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-2 mb-1">
-            Workspace
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {navItems.map((item) => {
-                const active = isActive(item.url);
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      data-active={active}
-                      className={`h-9 rounded-md transition-all ${
-                        active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                          : "text-sidebar-foreground/70 font-medium"
-                      }`}
-                    >
-                      <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                        <item.icon className={`w-4 h-4 ${active ? "text-primary" : ""}`} />
-                        <span className="text-sm">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navGroups.map((group) => (
+          <SidebarGroup key={group.label} className="px-2 mb-1">
+            <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-2 mb-1">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.url, item.exact);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        data-active={active}
+                        className={`h-9 rounded-md transition-all ${
+                          active
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                            : "text-sidebar-foreground/70 font-medium"
+                        }`}
+                      >
+                        <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
+                          <item.icon className={`w-4 h-4 ${active ? "text-primary" : ""}`} />
+                          <span className="text-sm">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
 
-        <SidebarGroup className="px-2 mt-2">
-          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-2 mb-1">
-            Akun
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {bottomItems.map((item) => {
-                const active = isActive(item.url);
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      data-active={active}
-                      className={`h-9 rounded-md transition-all ${
-                        active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                          : "text-sidebar-foreground/70 font-medium"
-                      }`}
-                    >
-                      <Link href={item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}>
-                        <item.icon className={`w-4 h-4 ${active ? "text-primary" : ""}`} />
-                        <span className="text-sm">{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-
-              {user?.isAdmin && (
+        {user?.isAdmin && (
+          <SidebarGroup className="px-2 mt-1">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
@@ -129,10 +122,10 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">

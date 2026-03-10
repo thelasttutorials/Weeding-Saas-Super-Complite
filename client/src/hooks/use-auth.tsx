@@ -26,6 +26,7 @@ interface RegisterData {
   password: string;
   email: string;
   fullName: string;
+  referralCode?: string;
 }
 
 const AuthCtx = createContext<AuthContext | null>(null);

@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, Users, Mail, LogOut, Heart, Shield,
   Star, HelpCircle, CreditCard, Receipt, Settings, Globe,
-  FileText, Menu, X, Palette
+  FileText, Menu, X, Palette, Tag, Share2, LayoutTemplate,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,25 +20,34 @@ const navGroups = [
     ],
   },
   {
-    label: "Tema",
+    label: "Konten",
     items: [
-      { title: "Library Tema", url: "/admin/themes", icon: Palette },
+      { title: "CMS Landing", url: "/admin/cms", icon: LayoutTemplate },
+      { title: "Testimoni", url: "/admin/testimonials", icon: Star },
+      { title: "FAQ", url: "/admin/faqs", icon: HelpCircle },
     ],
   },
   {
-    label: "Konten",
+    label: "Marketing",
     items: [
-      { title: "Testimoni", url: "/admin/testimonials", icon: Star },
-      { title: "FAQ", url: "/admin/faqs", icon: HelpCircle },
       { title: "Paket Harga", url: "/admin/pricing", icon: CreditCard },
+      { title: "Kupon", url: "/admin/coupons", icon: Tag },
+      { title: "Referral", url: "/admin/referrals", icon: Share2 },
     ],
   },
   {
     label: "Konfigurasi",
     items: [
+      { title: "Domain", url: "/admin/domains", icon: Globe },
       { title: "Pengaturan", url: "/admin/settings", icon: Settings },
       { title: "SEO", url: "/admin/seo", icon: Globe },
       { title: "Audit Log", url: "/admin/logs", icon: FileText },
+    ],
+  },
+  {
+    label: "Tema",
+    items: [
+      { title: "Library Tema", url: "/admin/themes", icon: Palette },
     ],
   },
 ];
@@ -79,7 +88,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-3 space-y-4">
+      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
         {navGroups.map((group) => (
           <div key={group.label}>
             <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest px-2.5 mb-1">
@@ -153,7 +162,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-56 bg-background border-r border-border flex-col shrink-0 overflow-y-auto">
+      <aside className="hidden lg:flex w-56 bg-background border-r border-border flex-col shrink-0">
         <SidebarContent />
       </aside>
 

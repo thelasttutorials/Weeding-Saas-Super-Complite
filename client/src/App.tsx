@@ -22,6 +22,14 @@ import Analytics from "@/pages/dashboard/analytics";
 import Subscription from "@/pages/dashboard/subscription";
 import PaymentInvoice from "@/pages/dashboard/payment-invoice";
 import AccountSettings from "@/pages/dashboard/settings";
+import GuestsPage from "@/pages/dashboard/guests";
+import CheckinPage from "@/pages/dashboard/checkin";
+import MediaLibrary from "@/pages/dashboard/media";
+import DomainSettings from "@/pages/dashboard/domain";
+import AdminCoupons from "@/pages/admin/coupons";
+import AdminReferrals from "@/pages/admin/referrals";
+import AdminDomains from "@/pages/admin/domains";
+import AdminCmsLanding from "@/pages/admin/cms-landing";
 import InvitePage from "@/pages/invite";
 import PreviewPage from "@/pages/preview";
 import AdminLayout from "@/pages/admin/layout";
@@ -81,6 +89,12 @@ function Router() {
       <Route path="/dashboard/invitations">
         {() => <ProtectedLayout><Invitations /></ProtectedLayout>}
       </Route>
+      <Route path="/dashboard/invitations/:id/guests">
+        {() => <ProtectedLayout><GuestsPage /></ProtectedLayout>}
+      </Route>
+      <Route path="/dashboard/invitations/:id/checkin">
+        {() => <ProtectedLayout><CheckinPage /></ProtectedLayout>}
+      </Route>
       <Route path="/dashboard/builder/:id">
         {() => <ProtectedLayout><Builder /></ProtectedLayout>}
       </Route>
@@ -107,6 +121,12 @@ function Router() {
       </Route>
       <Route path="/dashboard/settings">
         {() => <ProtectedLayout><AccountSettings /></ProtectedLayout>}
+      </Route>
+      <Route path="/dashboard/media">
+        {() => <ProtectedLayout><MediaLibrary /></ProtectedLayout>}
+      </Route>
+      <Route path="/dashboard/domain">
+        {() => <ProtectedLayout><DomainSettings /></ProtectedLayout>}
       </Route>
 
       {/* Admin Panel */}
@@ -144,6 +164,18 @@ function Router() {
         {() => <AdminLayout><AdminThemes /></AdminLayout>}
       </Route>
       <Route path="/admin/themes/:id/builder" component={AdminThemeBuilder} />
+      <Route path="/admin/coupons">
+        {() => <AdminLayout><AdminCoupons /></AdminLayout>}
+      </Route>
+      <Route path="/admin/referrals">
+        {() => <AdminLayout><AdminReferrals /></AdminLayout>}
+      </Route>
+      <Route path="/admin/domains">
+        {() => <AdminLayout><AdminDomains /></AdminLayout>}
+      </Route>
+      <Route path="/admin/cms">
+        {() => <AdminLayout><AdminCmsLanding /></AdminLayout>}
+      </Route>
 
       <Route component={NotFound} />
     </Switch>

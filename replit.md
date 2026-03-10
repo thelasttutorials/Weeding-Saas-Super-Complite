@@ -1,119 +1,125 @@
 # WedSaaS - Digital Wedding Invitation Platform
 
 ## Overview
-WedSaaS is a production-ready SaaS platform for digital wedding invitations. Users create beautiful wedding invitation websites, share links, manage RSVPs, receive guest messages, display digital gift accounts, gallery photos, and view analytics. Admins have a comprehensive panel to manage the entire platform including content, pricing, testimonials, FAQs, settings, SEO, and audit logs.
+WedSaaS is a production-ready SaaS platform for digital wedding invitations. Users create beautiful wedding invitation websites, share links, manage RSVPs, receive guest messages, display digital gift accounts, gallery photos, and view analytics. Admins have a comprehensive panel to manage the entire platform.
 
 ## Tech Stack
 - **Frontend**: React + TypeScript, Wouter routing, TanStack Query, Shadcn UI, Recharts
 - **Backend**: Express.js v5 + TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Session-based (express-session + passport-local + bcrypt)
+- **File Upload**: Multer with magic-bytes validation (images + audio)
+- **QR Code**: qrcode (server), qrcode.react (client), html5-qrcode (QR scanner)
 
 ## Application Structure
 
 ### User Routes
-- `/` - Marketing landing page
-- `/login` - Login page
-- `/register` - Register page
-- `/invite/:slug` - Public wedding invitation page (no auth required) — includes share section (Copy, WhatsApp, Telegram)
-- `/preview/:id` - Draft/published invitation preview page (auth required, no sidebar, shows "Mode Preview" amber banner)
-- `/dashboard` - Dashboard overview (auth required)
-- `/dashboard/invitations` - Invitation list & create
-- `/dashboard/builder/:id` - Invitation builder (5 tabs: couple, events, content, theme, settings)
+- `/` - Marketing landing page (CMS-driven from landing_page_settings)
+- `/login` - Login page (with referral code awareness)
+- `/register` - Register page (optional referral_code field)
+- `/invite/:slug` - Public wedding invitation page (personalized via `?guest=TOKEN`)
+- `/preview/:id` - Draft/published invitation preview (auth required)
+- `/dashboard` - Dashboard overview with guest stats widget
+- `/dashboard/invitations` - Invitation list with Duplicate button
+- `/dashboard/invitations/:id/guests` - Guest management (CRUD, categories, QR)
+- `/dashboard/invitations/:id/checkin` - QR Check-in scanner + manual token
+- `/dashboard/builder/:id` - Builder (5 tabs: couple, events, content, theme, settings) + AI Copy Assistant
 - `/dashboard/rsvp` - RSVP management
-- `/dashboard/messages` - Guest messages (with hide/show + sort)
+- `/dashboard/messages` - Guest messages (hide/show + sort)
 - `/dashboard/gifts` - Digital gift accounts (bank/e-wallet)
-- `/dashboard/gallery` - Gallery photo management (URL-based)
+- `/dashboard/gallery` - Gallery photo management
 - `/dashboard/analytics` - Analytics with charts
-- `/dashboard/subscription` - Subscription plans with checkout modal + payment history
-- `/dashboard/billing/:id` - Invoice detail page (countdown timer, bank transfer instructions, proof upload, payment timeline)
-- `/dashboard/settings` - Account settings + password change
+- `/dashboard/media` - Media Library (upload/manage images & audio files)
+- `/dashboard/domain` - Custom domain settings + DNS guide
+- `/dashboard/subscription` - Plans with coupon code support in checkout
+- `/dashboard/billing/:id` - Invoice detail page
+- `/dashboard/settings` - Account settings
 
 ### Admin Routes
-- `/admin` - Platform overview stats + recent users/invitations + quick actions
-- `/admin/users` - User management (plan, suspend/activate, toggle admin, reg date)
-- `/admin/invitations` - All invitations (publish/unpublish/archive, views count)
-- `/admin/themes` - Wedding Theme Library (CRUD, duplicate, publish, search/filter)
-- `/admin/themes/:id/builder` - Visual Theme Builder (full-screen, no admin sidebar, drag-drop)
-- `/admin/testimonials` - Testimonials CRUD (publish/unpublish, star rating)
-- `/admin/faqs` - FAQ CRUD (category filter, sort order, active toggle)
-- `/admin/pricing` - Pricing plans CRUD + plan features management
-- `/admin/payments` - Payment management with approve/reject actions, shows uniqueCode + amount + finalAmount columns, search + status filter
-- `/admin/settings` - Website settings (General + System tabs)
-- `/admin/seo` - SEO settings (meta tags, OG, Twitter card, live preview)
-- `/admin/logs` - Audit log viewer (color-coded action badges, search + filter)
+- `/admin` - Platform overview stats
+- `/admin/users` - User management
+- `/admin/invitations` - All invitations
+- `/admin/themes` - Wedding Theme Library
+- `/admin/themes/:id/builder` - Visual Theme Builder
+- `/admin/testimonials` - Testimonials CRUD
+- `/admin/faqs` - FAQ CRUD
+- `/admin/pricing` - Pricing plans + features
+- `/admin/payments` - Payment management
+- `/admin/coupons` - Coupon management (create/edit/toggle)
+- `/admin/referrals` - Referral usage tracking
+- `/admin/domains` - Custom domain approval (status management)
+- `/admin/cms` - CMS Landing Page editor
+- `/admin/settings` - Website settings
+- `/admin/seo` - SEO settings
+- `/admin/logs` - Audit log viewer
 
-### Key Features (ALL ACTIVE WITH REAL DB)
-- Multi-tenant: each user can have many invitations (RLS enforced)
-- 4 built-in wedding themes: Classic Elegant, Minimal Modern, Romantic Floral, Luxury Gold
-- **Admin Wedding Theme Builder**: Elementor-like visual builder with 14 block types, drag-drop reorder, content/style inspector, global settings (colors, fonts, spacing)
-- RSVP management with guest count, search, filter
-- Guest messages with visibility toggle + newest/oldest sort
-- Digital gift (bank/e-wallet) accounts
-- Gallery photos (URL-based, no file upload required)
-- Analytics with views, RSVP breakdown, conversion rate, charts
-- Countdown timer on public invitation page
-- Guest name personalization via `?to=GuestName` query param
-- Admin panel (role-based, isAdmin field on users)
-- Account settings with real profile save + password change
-- Admin testimonials/FAQ/pricing CRUD
-- Admin website settings & SEO settings stored in DB
+### User Sidebar Groups
+- **Undangan**: Overview, Undangan, RSVP, Pesan Tamu, Digital Gift, Galeri, Analytics
+- **Konten**: Media Library
+- **Akun**: Domain, Langganan, Pengaturan
+- Admin users see an extra "Admin Panel" link
+
+### Admin Sidebar Groups
+- **Data**: Dashboard, Pengguna, Undangan, Pembayaran
+- **Konten**: CMS Landing, Testimoni, FAQ
+- **Marketing**: Paket Harga, Kupon, Referral
+- **Konfigurasi**: Domain, Pengaturan, SEO, Audit Log
+- **Tema**: Library Tema
+
+## Key Features (ALL ACTIVE WITH REAL DB)
+- Multi-tenant invitations with Row Level Security
+- 4 built-in + unlimited custom wedding themes
+- **Admin Wedding Theme Builder**: Visual builder with 14 block types, drag-drop
+- **Guest Management**: CRUD guests with categories (keluarga/teman/kantor/vip/lainnya), personalized invitation links per guest, QR code generation per guest
+- **QR Check-in**: Camera-based QR scanner (html5-qrcode), manual token fallback, real-time check-in stats
+- **Media Library**: Upload images and audio files (magic-bytes validated), copy URL, used in builder
+- **Custom Music**: Audio picker from media library in builder, autoplay with fallback play button, music controls toggle
+- **Duplicate Invitation**: One-click copy with all content (couple, events, content, gallery)
+- **AI Copy Generator**: Template-based text generator (opening text, quotes, love story, hashtags) — honest "template engine" labeling
+- **CMS Landing Page**: Admin-editable hero, features, how-it-works, CTA sections with show/hide toggles
+- **Coupon System**: Admin creates coupons (percentage/fixed), users apply at checkout, discount applied to payment
+- **Referral System**: Each user gets a referral code, new signups link via referral code, admin tracks referral usage
+- **Custom Domain**: Users submit domains, admin approves/rejects with DNS instructions shown to users
+- Manual Bank Transfer Payment System with unique invoice codes
 - Audit logging for all admin actions
-- **Manual Bank Transfer Payment System**: Users select plan → checkout modal → invoice with unique 3-digit code (amount + code = finalAmount) → 24h countdown timer → secure file upload (JPG/PNG/WebP/PDF, max 5MB, magic-bytes validated, UUID-renamed) → admin approve/reject → plan auto-activated on approval
 
-## Database Tables (24 total)
-### User/Invitation Tables (RLS enforced)
-- `users` - Accounts with plan (free/premium/business) + isAdmin + isSuspended
-- `invitations` - Wedding invitations (slug, theme, status, views)
-- `invitation_couples` - Bride/groom info, love story, photos
-- `invitation_events` - Akad and reception event details
-- `invitation_content` - Opening quote, closing message, RSVP settings
-- `invitation_gallery` - Gallery images with URL + caption
-- `rsvps` - RSVP submissions
-- `guest_messages` - Guest wishes/messages
-- `gift_accounts` - Bank/e-wallet accounts for digital gifting
-- `gift_confirmations` - Gift transfer confirmations
-- `subscriptions` - Subscription records per user
-- `white_label_settings` - Per-user white label config
+## Database Tables (31 total)
+### User/Invitation Tables
+- `users` - with plan, isAdmin, isSuspended, referralCode
+- `invitations`, `invitation_couples`, `invitation_events`
+- `invitation_content` - includes musicEnabled, musicLabel, showMusicControl
+- `invitation_gallery`, `rsvps` (with guestId), `guest_messages`
+- `gift_accounts`, `gift_confirmations`
+- `subscriptions`, `white_label_settings`
+
+### New Feature Tables
+- `guests` - invitationId, name, phone, email, category, guestCount, customLinkToken, rsvpStatus, checkedIn, checkedInAt
+- `media_assets` - userId, fileName, originalName, mimeType, size, url, mediaType (image/audio)
+- `custom_domains` - userId, domain, status (not_configured/pending/active/failed), adminNotes
+- `coupons` - code, discountType, discountValue, minAmount, maxUses, usedCount, applicablePlans, isActive
+- `coupon_usages` - couponId, userId, paymentId, discountApplied
+- `referral_usages` - referrerId, refereeId
+- `landing_page_settings` - singleton (id=1), all CMS fields for landing page
 
 ### Payment Tables
-- `bank_accounts` - Admin-managed bank accounts for manual transfer (bankName, accountNumber, accountName, isActive)
-- `payments` - Invoice records (userId, plan, invoiceNumber, amount, uniqueCode, finalAmount, status, expiresAt, transferProofUrl, paidAt, rejectedReason)
+- `bank_accounts`, `payments` (with couponCode, discountAmount)
 
 ### Admin/Platform Tables
-- `testimonials` - Platform testimonials with rating, publish status
-- `faqs` - Platform FAQ with category, sort order, active status
-- `pricing_plans` - Subscription plan definitions
-- `pricing_plan_features` - Features per plan
-- `audit_logs` - Admin action audit trail (who did what when)
-- `website_settings` - Singleton platform settings (id=1)
-- `seo_settings` - Singleton SEO config (id=1)
-- `session` - Express session store
+- `testimonials`, `faqs`, `pricing_plans`, `pricing_plan_features`
+- `audit_logs`, `website_settings`, `seo_settings`, `session`
 
 ### Theme Builder Tables
-- `wedding_themes` - Custom theme definitions (name, slug, status, globalSettings JSON, createdBy)
-- `wedding_theme_blocks` - Ordered block list per theme (blockType, sortOrder, content JSON, style JSON, isVisible)
+- `wedding_themes`, `wedding_theme_blocks`
 
 ## Row Level Security Architecture
-PostgreSQL RLS enforces that users only access their own data at the database level.
-
-**Mechanism**: Each authenticated request uses `withUserContext(userId, fn)` in `server/db.ts`.
-Sets `SET LOCAL app.current_user_id = '{userId}'` (transaction-scoped, safe with connection pools).
-
-**Public routes**: Allow SELECT on status='published' rows only.
-`increment_invitation_views()`: SECURITY DEFINER function bypasses RLS for view counting.
-
-**Migration**: `migrations/001_row_level_security.sql` — idempotent, safe to re-run.
+PostgreSQL RLS enforces that users only access their own data.
+**Mechanism**: `withUserContext(userId, fn)` sets `SET LOCAL app.current_user_id = '{userId}'`
 
 ## Demo Accounts
 - `demo` / `demo123` — Admin + Premium — invitation slug: `ahmad-dan-sari`
 - `admin` / `admin123` — Admin + Business
 - `user_free` / `user123` — Free plan user
 - `user_premium` / `user123` — Premium plan user
-
-## Admin Access
-Set `is_admin = true` in the `users` table. Non-admin users attempting /admin are redirected to /dashboard.
-Use `PATCH /api/admin/users/:id/toggle-admin` to toggle via UI.
 
 ## VPS / Self-Hosted Deployment
 
@@ -122,29 +128,10 @@ Use `PATCH /api/admin/users/:id/toggle-admin` to toggle via UI.
 cp .env.example .env
 nano .env                  # Fill in DATABASE_URL, SESSION_SECRET, ADMIN_PASSWORD
 bash scripts/setup.sh      # Install → build → db push → seed
-npm start                  # or: pm2 start "npm start" --name wedsaas
+npm start
 ```
 
-### What setup.sh does (in order)
-1. Validates .env (fails if placeholders left unchanged)
-2. `npm ci` — clean install of production + dev deps
-3. `mkdir -p uploads dist` — ensures required directories exist
-4. `npm run build` — Vite client + esbuild server → `dist/`
-5. `echo "y" | npx drizzle-kit push` — non-interactive schema push
-6. `npx tsx scripts/seed.ts` — seeds admin, bank accounts, settings, pricing plans
-
-### Standalone scripts
-| Command | Purpose |
-|---|---|
-| `npm run build` | Build client (Vite) + server (esbuild) → `dist/` |
-| `npm start` | Run production build (Node.js) |
-| `npm run dev` | Development with hot-reload |
-| `npm run check` | TypeScript type-check |
-| `npm run db:push` | Push Drizzle schema to PostgreSQL (interactive) |
-| `npx tsx scripts/seed.ts` | Seed DB with admin, bank accounts, settings, pricing |
-| `bash scripts/setup.sh` | Full first-time VPS setup |
-
-### Required environment variables (see .env.example)
+### Required environment variables
 | Variable | Description |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string (required) |
@@ -152,95 +139,79 @@ npm start                  # or: pm2 start "npm start" --name wedsaas
 | `APP_URL` | Canonical URL e.g. https://yourdomain.com |
 | `PORT` | Port to listen on (default: 5000) |
 | `ADMIN_EMAIL` | Admin account email (seeded once) |
-| `ADMIN_USERNAME` | Admin username (seeded once, default: admin) |
-| `ADMIN_PASSWORD` | Admin password (seeded once, MUST change default) |
-| `SITE_NAME` | Site name used in settings (default: WedSaaS) |
+| `ADMIN_USERNAME` | Admin username (default: admin) |
+| `ADMIN_PASSWORD` | Admin password (MUST change default) |
+| `SITE_NAME` | Site name (default: WedSaaS) |
 | `SKIP_DEMO_SEED` | Set "true" to skip demo user seeding |
-
-### Seed data (created on fresh install)
-- Admin user (credentials from ADMIN_* env vars, fallback: admin@wedsaas.app / Admin123!)
-- Demo user (demo / demo123) — skipped if SKIP_DEMO_SEED=true
-- Bank accounts: BCA, Mandiri, BNI
-- Website settings singleton (id=1)
-- SEO settings singleton (id=1)
-- Pricing plans: Free (Rp 0), Premium (Rp 99.000), Business (Rp 299.000) with features
-
-### Build script internals (script/build.ts)
-esbuild bundles pure-JS deps; these are intentionally kept external (not bundled):
-- `bcrypt` — native C++ bindings (.node file), must stay external
-- `bufferutil` — native C++ bindings (optional ws dep)
-- `pg` — has optional pg-native; kept external to avoid edge cases
-
-## Express v5 Note
-This project uses Express v5 with `@types/express` v5. Route params are typed as `string | string[]` — routes.ts has a `declare module "express-serve-static-core"` override to treat them as `string`.
 
 ## API Endpoints
 
 ### Auth
-- `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/logout`
+- `POST /api/auth/login`, `POST /api/auth/register` (accepts referralCode), `POST /api/auth/logout`
 - `GET /api/auth/me`
 
 ### Invitation Management (auth required, RLS scoped)
 - `GET/POST /api/invitations`
 - `GET/PATCH/DELETE /api/invitations/:id`
-- `POST /api/invitations/:id/publish`, `POST /api/invitations/:id/unpublish`
-- `GET /api/invitations/:id/preview-data` — owner/admin only, returns full invitation data regardless of publish status (no view tracking)
-- `GET/PUT /api/invitations/:id/couple`
-- `GET/PUT /api/invitations/:id/events`
-- `GET/PUT /api/invitations/:id/content`
+- `POST /api/invitations/:id/publish`, `/unpublish`
+- `POST /api/invitations/:id/duplicate` — NEW
+- `GET /api/invitations/:id/preview-data`
+- `GET/PUT /api/invitations/:id/couple`, `/events`, `/content`
 - `GET/POST /api/invitations/:id/gallery`, `DELETE /api/invitations/:id/gallery/:imageId`
-- `GET /api/invitations/:id/rsvps`, `GET /api/invitations/:id/messages`
+- `GET /api/invitations/:id/rsvps`, `/messages`, `/analytics`
 - `PATCH /api/messages/:id/visibility`
 - `GET/POST /api/invitations/:id/gifts`, `DELETE /api/gifts/:id`
 - `GET /api/invitations/:id/gift-confirmations`
-- `GET /api/invitations/:id/analytics`
 
-### User
-- `GET /api/stats`, `PATCH /api/users/me`, `PATCH /api/users/me/password`
+### Guest Management (auth required)
+- `GET /api/invitations/:id/guests` — list with stats
+- `POST /api/invitations/:id/guests` — create (auto-generates customLinkToken)
+- `PATCH /api/guests/:id`, `DELETE /api/guests/:id`
+- `POST /api/guests/:id/checkin` — mark checked-in with timestamp
+- `GET /api/guests/token/:token` — public, resolve guest by token
 
-### Admin (requireAdmin middleware)
-- `GET /api/admin/stats` — includes recentUsers + recentInvitations
-- `GET /api/admin/users`, `PATCH /api/admin/users/:id/plan`
-- `PATCH /api/admin/users/:id/suspend`, `PATCH /api/admin/users/:id/unsuspend`
-- `PATCH /api/admin/users/:id/toggle-admin`
-- `GET /api/admin/users/:id/detail`
-- `GET /api/admin/invitations`
-- `POST /api/admin/invitations/:id/publish`, `/unpublish`, `/archive`
-- `GET/POST /api/admin/testimonials`, `PATCH/DELETE /api/admin/testimonials/:id`
-- `GET/POST /api/admin/faqs`, `PATCH/DELETE /api/admin/faqs/:id`
-- `GET/POST /api/admin/pricing`, `PATCH/DELETE /api/admin/pricing/:id`
-- `GET/PUT /api/admin/pricing/:id/features`
-- `GET /api/admin/subscriptions`
-- `GET/PUT /api/admin/settings/website`
-- `GET/PUT /api/admin/settings/seo`
-- `GET /api/admin/audit-logs`
+### Media Library (auth required)
+- `GET /api/media` — list user's media assets
+- `POST /api/media/upload` — upload file (image or audio)
+- `DELETE /api/media/:id`
 
-### Admin Theme Builder (requireAdmin)
-- `GET /api/admin/themes` — list all themes
-- `POST /api/admin/themes` — create theme
-- `GET /api/admin/themes/:id` — get theme + blocks
-- `PATCH /api/admin/themes/:id` — update theme
-- `DELETE /api/admin/themes/:id` — delete theme
-- `POST /api/admin/themes/:id/duplicate` — duplicate theme
-- `POST /api/admin/themes/:id/publish` — publish theme
-- `POST /api/admin/themes/:id/archive` — archive theme
-- `GET/POST /api/admin/themes/:id/blocks` — list/add blocks
-- `PATCH /api/admin/themes/:themeId/blocks/:blockId` — update block
-- `DELETE /api/admin/themes/:themeId/blocks/:blockId` — delete block
-- `POST /api/admin/themes/:id/blocks/reorder` — reorder blocks
+### Coupon & Referral (auth required)
+- `POST /api/coupons/validate` — validate coupon code for a plan
+- `GET /api/referral/me` — get/auto-generate user's referral code
+- `GET /api/referral/stats` — referral count for current user
+
+### Custom Domain (auth required)
+- `GET /api/domain` — get user's custom domain
+- `POST /api/domain` — create/update domain request
+
+### AI Copy Generator (auth required)
+- `POST /api/ai/generate` — template-based text generation (type, groomName, brideName, tone, language)
+
+### Admin (requireAdmin)
+- `GET/POST /api/admin/coupons`, `PATCH/DELETE /api/admin/coupons/:id`
+- `GET /api/admin/referrals`
+- `GET /api/admin/domains`, `PATCH /api/admin/domains/:id`
+- `GET/PUT /api/admin/cms/landing`
+- All existing admin routes (users, invitations, payments, themes, testimonials, faqs, pricing, settings, seo, audit-logs)
 
 ### Public (no auth)
-- `GET /api/public/:slug`, `POST /api/public/:slug/rsvp`
-- `POST /api/public/:slug/messages`, `GET /api/public/:slug/messages`
+- `GET /api/public/:slug`, `POST /api/public/:slug/rsvp` (accepts guestToken)
+- `POST/GET /api/public/:slug/messages`
 - `POST /api/public/:slug/gift-confirmation`
-- `GET /api/public/themes/:id` — get published theme + blocks (for custom invite rendering)
+- `GET /api/public/themes/:id`
+- `GET /api/public/landing-settings` — CMS landing page data
 
 ## Theme Builder Architecture
-- `client/src/lib/theme-blocks.ts` — 14 block type definitions with labels, icons, defaultContent, defaultStyle
-- `client/src/pages/admin/themes.tsx` — Theme library grid page
-- `client/src/pages/admin/theme-builder.tsx` — Full-screen 3-panel visual builder (left: block library + global settings, center: sortable canvas, right: content/style inspector)
-- `client/src/components/theme-renderer/` — Block renderer components (index.tsx + 14 individual block files)
-- Invitations with `customThemeId` use ThemeRenderer on /invite/:slug; others use built-in themes
+- 14 block types: cover, couple, quote, countdown, story, events, maps, gallery, rsvp, messages, gifts, closing, divider, text
+- `client/src/lib/theme-blocks.ts` — block type definitions
+- `client/src/components/theme-renderer/` — block renderer components
 
-## 14 Block Types
-cover, couple, quote, countdown, story, events, maps, gallery, rsvp, messages, gifts, closing, divider, text
+## Express v5 Note
+Route params are typed as `string | string[]` — routes.ts has a `declare module "express-serve-static-core"` override to treat them as `string`.
+
+## Schema Management
+- Always use `executeSql` via code_execution for schema changes (drizzle-kit push hangs on new tables)
+- `pricing_plan_features` column is `feature_name` NOT `feature`
+- `website_settings / seo_settings / landing_page_settings` are singletons with id=1
+- Payment status enum: `pending`, `waiting_confirmation`, `paid`, `rejected`, `expired`, `canceled`
+- PLAN_AMOUNTS: premium=99000, business=299000 (integers, IDR)

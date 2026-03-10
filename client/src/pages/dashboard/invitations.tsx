@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle, Globe, GlobeLock, Share2 } from "lucide-react";
+import { PlusCircle, Heart, Edit, Trash2, Eye, ExternalLink, Search, Copy, Archive, Loader2, CheckCircle, XCircle, Globe, GlobeLock, Share2, CopyPlus, Users, QrCode } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -189,6 +189,21 @@ export default function Invitations() {
     onError: (err: any) => {
       setPublishingId(null);
       toast({ title: "Gagal", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/invitations/${id}/duplicate`, {});
+      return res.json() as Promise<Invitation>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      toast({ title: "Undangan berhasil diduplikasi" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Gagal duplikasi", description: err.message, variant: "destructive" });
     },
   });
 
@@ -381,6 +396,16 @@ export default function Invitations() {
                         Unpublish
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => duplicateMutation.mutate(inv.id)}
+                      disabled={duplicateMutation.isPending}
+                      title="Duplikat"
+                      data-testid={`button-duplicate-${inv.id}`}
+                    >
+                      {duplicateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CopyPlus className="w-4 h-4" />}
+                    </Button>
                     {inv.status !== "archived" && (
                       <Button
                         size="sm"
@@ -392,12 +417,26 @@ export default function Invitations() {
                         <Archive className="w-4 h-4" />
                       </Button>
                     )}
-                    <Link href={`/dashboard/builder/${inv.id}`}>
-                      <Button size="sm" variant="outline" data-testid={`button-edit-${inv.id}`}>
-                        <Edit className="w-4 h-4 mr-1.5" />
-                        Edit
-                      </Button>
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={`/dashboard/builder/${inv.id}`}>
+                        <Button size="sm" variant="outline" data-testid={`button-edit-${inv.id}`}>
+                          <Edit className="w-4 h-4 mr-1.5" />
+                          Edit
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/invitations/${inv.id}/guests`}>
+                        <Button size="sm" variant="outline" data-testid={`button-guests-${inv.id}`}>
+                          <Users className="w-4 h-4 mr-1.5" />
+                          Tamu
+                        </Button>
+                      </Link>
+                      <Link href={`/dashboard/invitations/${inv.id}/checkin`}>
+                        <Button size="sm" variant="outline" data-testid={`button-checkin-${inv.id}`}>
+                          <QrCode className="w-4 h-4 mr-1.5" />
+                          Check-in
+                        </Button>
+                      </Link>
+                    </div>
                     <Button
                       size="sm"
                       variant="ghost"
